@@ -1,0 +1,72 @@
+{
+  "cursor": {
+    "label": "Cursor",
+    "aliases": ["cursor-ide", "cursor ai"],
+    "skillsDir": ".cursor/skills",
+    "globalSkillsDir": "~/.cursor/skills",
+    "rules": "cursor-mdc"
+  },
+  "claude-code": {
+    "label": "Claude Code",
+    "aliases": ["claude", "anthropic"],
+    "skillsDir": ".claude/skills",
+    "globalSkillsDir": "~/.claude/skills",
+    "rules": "none"
+  },
+  "github-copilot": {
+    "label": "GitHub Copilot",
+    "aliases": ["copilot", "vscode", "vs code"],
+    "skillsDir": ".agents/skills",
+    "globalSkillsDir": "~/.copilot/skills",
+    "rules": "none"
+  },
+  "windsurf": {
+    "label": "Windsurf",
+    "aliases": ["cascade"],
+    "skillsDir": ".windsurf/skills",
+    "globalSkillsDir": "~/.codeium/windsurf/skills",
+    "rules": "none"
+  },
+  "trae": {
+    "label": "Trae",
+    "aliases": ["trae-cn"],
+    "skillsDir": ".trae/skills",
+    "globalSkillsDir": "~/.trae/skills",
+    "rules": "none"
+  },
+  "codex": {
+    "label": "Codex",
+    "aliases": ["openai-codex"],
+    "skillsDir": ".agents/skills",
+    "globalSkillsDir": "~/.codex/skills",
+    "rules": "none"
+  },
+  "gemini-cli": {
+    "label": "Gemini CLI",
+    "aliases": ["gemini", "antigravity"],
+    "skillsDir": ".agents/skills",
+    "globalSkillsDir": "~/.gemini/skills",
+    "rules": "none"
+  },
+  "opencode": {
+    "label": "OpenCode",
+    "aliases": [],
+    "skillsDir": ".agents/skills",
+    "globalSkillsDir": "~/.config/opencode/skills",
+    "rules": "none"
+  },
+  "cline": {
+    "label": "Cline",
+    "aliases": ["kilocode", "kilo", "roo", "roo-code"],
+    "skillsDir": ".agents/skills",
+    "globalSkillsDir": "~/.agents/skills",
+    "rules": "none"
+  },
+  "universal": {
+    "label": "Universal",
+    "aliases": ["unknown", "amp", "replit"],
+    "skillsDir": ".agents/skills",
+    "globalSkillsDir": "~/.agents/skills",
+    "rules": "none"
+  }
+}

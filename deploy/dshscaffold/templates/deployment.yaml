@@ -1,0 +1,276 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.workloads.dshscaffold.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      {{- $enableDind := ne (toString (index (.Values.olaresEnv | default dict) "ENABLE_DIND")) "false" }}
+      enableServiceLinks: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        - name: init-permissions
+          image: beclab/aboveos-busybox:1.37.0
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              mkdir -p /appdata/data /appdata/data/cli /appdata/data/dshscaffold /appdata/data/workspace /appdata/data/home
+              chown 1000:1000 /appdata/data /appdata/data/cli /appdata/data/dshscaffold /appdata/data/workspace /appdata/data/home
+          volumeMounts:
+            - name: app-data
+              mountPath: /appdata
+        {{- if .Values.dev.hotReload }}
+        - name: fix-dev-perms
+          image: beclab/aboveos-busybox:1.37.0
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: DEV_SUBPATH
+              value: {{ .Values.dev.sourceSubPath | default "devsrc" | quote }}
+          command:
+            - sh
+            - -c
+            - mkdir -p "/appdata/$DEV_SUBPATH" && chown 1000:1000 "/appdata/$DEV_SUBPATH"
+          volumeMounts:
+            - name: app-data
+              mountPath: /appdata
+        - name: seed-dev-src
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: DEV_SUBPATH
+              value: {{ .Values.dev.sourceSubPath | default "devsrc" | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              target="/appdata/$DEV_SUBPATH"
+              mkdir -p "$target"
+              if [ ! -f "$target/.dsh-image-id" ] || ! cmp -s /app/.dsh-image-id "$target/.dsh-image-id"; then
+                find "$target" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+                cp -a /app/. "$target/"
+              fi
+          volumeMounts:
+            - name: app-data
+              mountPath: /appdata
+        {{- end }}
+        {{- if $enableDind }}
+        - name: init-docker-cli
+          image: docker.io/beclab/docker:29.3.0-dind
+          imagePullPolicy: IfNotPresent
+          command:
+            - cp
+            - /usr/local/bin/docker
+            - /docker-cli/docker
+          volumeMounts:
+            - name: docker-cli-bin
+              mountPath: /docker-cli
+        {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          {{- if .Values.dev.hotReload }}
+          command:
+            - npm
+            - run
+            - start
+          {{- end }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PORT
+              value: "8080"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: HOME
+              value: /data/home
+            - name: TZ
+              value: {{ .Values.olaresEnv.TIMEZONE | quote }}
+            - name: DSH_WORKSPACE
+              value: /data/workspace
+            - name: DSH_DATA_DIR
+              value: /data/dshscaffold
+            - name: DSH_CLI_ROOT
+              value: /data/cli
+            - name: OLARES_CLI_HOME
+              value: /data/cli/.olares-cli
+            - name: OLARES_CLI_DATA_DIR
+              value: /data/cli/keychain
+            - name: OLARES_CLI_REMOTE_ONLY
+              value: "1"
+            - name: XDG_CACHE_HOME
+              value: /data/cache
+            - name: HF_HOME
+              value: /data/common/huggingface
+            - name: HF_HUB_CACHE
+              value: /data/common/huggingface
+            - name: LLM_GATEWAY_URL
+              value: {{ printf "https://router.%s/v1" .Values.user.zone | quote }}
+            - name: LLM_GATEWAY_FALLBACK_URL
+              value: {{ printf "https://llmgatewayv3.%s/v1" .Values.user.zone | quote }}
+            - name: MODEL_CONSOLE_APPS
+              value: {{ default "" .Values.olaresEnv.MODEL_CONSOLE_APPS | quote }}
+            - name: OLARES_SYS_VERSION
+              value: {{ .Values.sysVersion | quote }}
+            - name: OLARES_APP_ID
+              value: "dshscaffold"
+            - name: DSH_TRUSTED_HOSTS
+              value: {{ printf "%s,%s.%s.olares.local" .Values.domain.dshscaffold (splitList "." .Values.domain.dshscaffold | first) .Values.bfl.username | quote }}
+            - name: HOT_RELOAD
+              value: {{ .Values.dev.hotReload | quote }}
+            - name: NODE_ENV
+              value: "production"
+            {{- if $enableDind }}
+            - name: DOCKER_HOST
+              value: "tcp://localhost:2375"
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 180
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: app-data
+              mountPath: /data
+              subPath: data
+            - name: app-cache
+              mountPath: /data/cache
+            - name: app-common
+              mountPath: /data/common
+            - name: user-home
+              mountPath: /Home
+            {{- if .Values.dev.hotReload }}
+            - name: app-data
+              mountPath: /app
+              subPath: {{ .Values.dev.sourceSubPath | default "devsrc" }}
+            {{- end }}
+            {{- if $enableDind }}
+            - name: docker-cli-bin
+              mountPath: /usr/local/bin/docker
+              subPath: docker
+              readOnly: true
+            {{- end }}
+        {{- if $enableDind }}
+        - name: docker-dind
+          image: docker.io/beclab/docker:29.3.0-dind
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsGroup: 0
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+            - name: TZ
+              value: {{ .Values.olaresEnv.TIMEZONE | quote }}
+          command:
+            - dockerd
+            - --host
+            - tcp://0.0.0.0:2375
+            - --host
+            - unix:///var/run/docker.sock
+            - --mtu=1450
+          ports:
+            - containerPort: 2375
+          startupProbe:
+            exec:
+              command:
+                - docker
+                - info
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 60
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - docker
+                - info
+            initialDelaySeconds: 5
+            periodSeconds: 20
+            timeoutSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          volumeMounts:
+            - name: dind-storage
+              mountPath: /var/lib/docker
+            - name: app-data
+              mountPath: /data
+              subPath: data
+            - name: user-home
+              mountPath: /Home
+        {{- end }}
+      volumes:
+        - name: app-data
+          hostPath:
+            path: {{ .Values.userspace.appData }}
+            type: DirectoryOrCreate
+        - name: app-cache
+          hostPath:
+            path: {{ .Values.userspace.appCache }}
+            type: DirectoryOrCreate
+        - name: app-common
+          hostPath:
+            path: {{ .Values.userspace.appCommon }}
+            type: DirectoryOrCreate
+        - name: user-home
+          hostPath:
+            path: {{ .Values.userspace.userData }}
+            type: DirectoryOrCreate
+        {{- if $enableDind }}
+        - name: docker-cli-bin
+          emptyDir: {}
+        - name: dind-storage
+          hostPath:
+            path: "{{ .Values.userspace.appData }}/docker"
+            type: DirectoryOrCreate
+        {{- end }}

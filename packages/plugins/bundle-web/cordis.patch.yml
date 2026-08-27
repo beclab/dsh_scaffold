@@ -1,0 +1,49 @@
+# Overlay on dsh-base + dsh-web-app. Applied last so these id patches win.
+
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    persona: !!js process.env.DSH_SYSTEM_PROMPT ?? ''
+
+- id: web-runtime
+  config:
+    openBrowser: false
+    printUrl: true
+    surfaceContext: false
+    trustedHosts: !!js ctx.webStartup.trustedHosts
+
+# CLI rejects --host 0.0.0.0; probes and the Olares mesh need all-interfaces.
+- id: webserver
+  config:
+    host: '0.0.0.0'
+    port: !!js Number(process.env.PORT ?? 8080)
+
+- id: fs-sandbox
+  config:
+    cwd: !!js process.env.DSH_CWD ?? process.env.DSH_WORKSPACE ?? process.cwd()
+
+- id: llm-deepseek
+  disabled: true
+
+- id: agent-default-model
+  config:
+    provider: olares-router
+    model: !!js process.env.DSH_MODEL ?? 'default'
+
+- id: sandbox-policy
+  config:
+    mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'
+    workspaceRoot: !!js process.env.DSH_CWD ?? process.env.DSH_WORKSPACE ?? process.cwd()
+
+- insert:
+    - id: scaffold-llm-routes
+      name: '@dsh/bundle-web/host/llm-routes.js'
+      inject: [webServer]
+
+    - id: scaffold-brand
+      name: '@dsh/bundle-web/host/brand/index.js'
+      inject: [webServer]
+
+    - id: scaffold-default-workspace
+      name: '@dsh/bundle-web/host/default-workspace.js'
+      inject: [workspaceRegistry]

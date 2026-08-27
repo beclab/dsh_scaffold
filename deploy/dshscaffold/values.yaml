@@ -1,0 +1,10 @@
+image: docker.io/local/dshscaffold:0.1.0
+imagePullPolicy: IfNotPresent
+
+workloads:
+  dshscaffold:
+    replicaCount: 1
+
+dev:
+  hotReload: false
+  sourceSubPath: devsrc

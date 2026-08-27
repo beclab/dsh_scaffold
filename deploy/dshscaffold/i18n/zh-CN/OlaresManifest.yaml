@@ -1,0 +1,20 @@
+metadata:
+  title: DSH Scaffold
+  description: 基于 DeepSeek Harness 的聊天包脚手架，上传到你自己的 Olares
+
+spec:
+  fullDescription: |
+    ## 概述
+    把 DeepSeek Harness 二次开发项目做成 Olares 聊天应用。存储、DinD、olares-cli
+    和 Agent 工具链已经声明好，只需在 `packages/` 上扩展，不必重写 chart。
+
+    ## 已包含
+    - 官方 dsh web UI + 本仓库 overlay
+    - 1.12.7 走 Router；1.12.6 直连 Model Console `/v1`
+    - Docker-in-Docker（`ENABLE_DIND`，默认开启）
+    - 镜像构建时从 olares-cli 导出的 `olares-*` 技能
+    - 已挂载 Home / Common / Cache，Drive 文件和 HF 缓存可直接用
+
+    ## 运行要求
+    - Olares >= 1.12.6
+    - 架构：amd64、arm64

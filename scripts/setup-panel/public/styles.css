@@ -1,0 +1,266 @@
+:root {
+  --ink: #1b1914;
+  --paper: #f4efe4;
+  --card: #fffaf1;
+  --line: #d8d0c0;
+  --accent: #b4532a;
+  --accent-ink: #fff8f2;
+  --muted: #6f685c;
+  --err: #9b1d2a;
+  --ok: #2f6b4f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #efe6d4, transparent),
+    var(--paper);
+  color: var(--ink);
+  font: 16px/1.5 "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", serif;
+}
+
+.frame {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  max-width: 920px;
+  margin: 48px auto;
+  min-height: 560px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 8px 12px 0 rgba(27, 25, 20, 0.08);
+}
+
+.rail {
+  padding: 28px 22px;
+  background: #2a261f;
+  color: #f3ead8;
+}
+
+.rail-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lang {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid #5a5246;
+}
+
+.lang button {
+  border: 0;
+  padding: 4px 8px;
+  background: transparent;
+  color: #b7ad96;
+  font: 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+}
+
+.lang button.active {
+  background: #e07a3d;
+  color: #fff8f2;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #c4b89a;
+}
+
+.rail h1 {
+  margin: 0 0 28px;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  position: relative;
+  padding: 10px 0 10px 22px;
+  color: #b7ad96;
+  border-left: 1px solid #4a4338;
+}
+
+.steps li.current {
+  color: #fff4df;
+}
+
+.steps li.done {
+  color: #d8c7a4;
+}
+
+.steps li::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6a6254;
+}
+
+.steps li.current::before,
+.steps li.done::before {
+  background: #e07a3d;
+}
+
+.hint {
+  margin-top: 28px;
+  font-size: 13px;
+  color: #b7ad96;
+}
+
+.panel {
+  padding: 36px 40px;
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.lede {
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+
+label {
+  display: block;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: 15px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+input:focus {
+  outline: 2px solid #e07a3d;
+  outline-offset: 1px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+button {
+  border: 1px solid var(--ink);
+  padding: 10px 16px;
+  font: 15px/1 inherit;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+button.ghost {
+  background: transparent;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.busy:disabled {
+  cursor: wait;
+}
+
+.error,
+.ok {
+  min-height: 1.2em;
+  font-size: 14px;
+}
+
+.error {
+  color: var(--err);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.hidden {
+  display: none;
+}
+
+.env-list {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.env-list li {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 14px;
+}
+
+.env-list li:last-child {
+  border-bottom: 0;
+}
+
+.env-list .env-ok {
+  color: var(--ok);
+}
+
+.env-list .env-fail {
+  color: var(--err);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.summary dt {
+  color: var(--muted);
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+}
+
+@media (max-width: 720px) {
+  .frame {
+    grid-template-columns: 1fr;
+    margin: 0;
+    min-height: 100vh;
+    box-shadow: none;
+  }
+}

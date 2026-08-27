@@ -1,0 +1,19 @@
+{
+  "name": "@dsh/bundle-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH Scaffold overlay: health probe, Router LLM shim, brand",
+  "exports": {
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./host/llm-routes.js": "./host/llm-routes.js",
+    "./host/brand/index.js": "./host/brand/index.js",
+    "./host/default-workspace.js": "./host/default-workspace.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

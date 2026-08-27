@@ -1,0 +1,102 @@
+apiVersion: v3
+olaresManifest.version: '0.15.0'
+olaresManifest.type: app
+metadata:
+  name: dshscaffold
+  appid: dshscaffold
+  title: DSH Scaffold
+  description: Chat package scaffold on DeepSeek Harness for upload to your Olares
+  icon: https://avatars.githubusercontent.com/u/148330874
+  version: 0.1.0
+  categories:
+    - Utilities_v112
+    - AI
+spec:
+  versionName: "0.1.0"
+  runAsUser: true
+  fullDescription: |
+    ## Overview
+    A scaffold for turning a DeepSeek Harness secondary-development project
+    into an Olares chat app. Storage, DinD, olares-cli, and the agent
+    toolchain are already declared — extend `packages/` without redoing the chart.
+
+    ## Included
+    - Official dsh web UI with this overlay
+    - Router (1.12.7) or Model Console `/v1` (1.12.6)
+    - Docker-in-Docker (`ENABLE_DIND`, default on)
+    - Image-exported `olares-*` skills from the bundled olares-cli
+    - Home / Common / Cache mounts so Drive files and HF caches work
+
+    ## Requirements
+    - Olares >= 1.12.6
+    - Arch: amd64, arm64
+  developer: developer
+  submitter: developer
+  locale:
+    - en-US
+    - zh-CN
+  requiredCpu: 400m
+  limitedCpu: "6"
+  requiredMemory: 768Mi
+  limitedMemory: 12Gi
+  requiredDisk: 2Gi
+  limitedDisk: 50Gi
+  supportArch:
+    - amd64
+    - arm64
+permission:
+  appData: true
+  appCache: true
+  appCommon: true
+  userData:
+    - Home
+entrances:
+  - name: dshscaffold
+    host: dshscaffold-svc
+    port: 8080
+    title: DSH Scaffold
+    icon: https://avatars.githubusercontent.com/u/148330874
+    authLevel: private
+    openMethod: window
+options:
+  apiTimeout: 0
+  allowedOutboundPorts:
+    - 22
+  policies:
+    - entranceName: dshscaffold
+      description: Brand mark and PWA manifest
+      uriRegex: ^/dshscaffold/(mark\.svg|manifest\.webmanifest)$
+      level: public
+  dependencies:
+    - name: olares
+      version: '>=1.12.6-0'
+      type: system
+    - name: router
+      version: '>=1.0.0'
+      type: application
+      mandatory: false
+    - name: llmgatewayv3
+      version: '>=1.0.0'
+      type: application
+      mandatory: false
+workloadReplicas:
+  dshscaffold: 1
+envs:
+  - envName: TIMEZONE
+    required: true
+    applyOnChange: true
+    valueFrom:
+      envName: OLARES_USER_TIMEZONE
+    description: "IANA time zone for the chat app (for example Asia/Shanghai)"
+  - envName: ENABLE_DIND
+    type: bool
+    required: false
+    applyOnChange: true
+    editable: true
+    default: "true"
+    description: "Run a privileged Docker-in-Docker sidecar. Leave on unless your environment forbids privileged containers."
+  - envName: MODEL_CONSOLE_APPS
+    required: false
+    editable: true
+    applyOnChange: true
+    description: "Optional extra Model Console app ids (comma-separated). Official Market models are already scanned."

@@ -1,0 +1,21 @@
+metadata:
+  title: DSH Scaffold
+  description: Chat package scaffold on DeepSeek Harness for upload to your Olares
+
+spec:
+  fullDescription: |
+    ## Overview
+    A scaffold for turning a DeepSeek Harness secondary-development project
+    into an Olares chat app. Storage, DinD, olares-cli, and the agent
+    toolchain are already declared — extend `packages/` without redoing the chart.
+
+    ## Included
+    - Official dsh web UI with this overlay
+    - Router (1.12.7) or Model Console `/v1` (1.12.6)
+    - Docker-in-Docker (`ENABLE_DIND`, default on)
+    - Image-exported `olares-*` skills from the bundled olares-cli
+    - Home / Common / Cache mounts so Drive files and HF caches work
+
+    ## Requirements
+    - Olares >= 1.12.6
+    - Arch: amd64, arm64

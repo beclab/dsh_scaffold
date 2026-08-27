@@ -1,0 +1,51 @@
+{
+  "name": "dshscaffold",
+  "title": "DSH Scaffold",
+  "image_repo": "docker.io/local/dshscaffold",
+  "image_base_repo": "docker.io/local/dshscaffold-base",
+  "image_base_tag": "3",
+  "npm_scope": "@dsh",
+  "chart_dir": "deploy/dshscaffold",
+  "image": {
+    "dockerfile": "Dockerfile",
+    "dockerfile_base": "Dockerfile.base",
+    "context": ".",
+    "platform": "linux/amd64",
+    "base_arg": "BASE_IMAGE"
+  },
+  "hot_reload": {
+    "source_subpath": "devsrc",
+    "deploy": "dshscaffold",
+    "container": "dshscaffold",
+    "chown": "1000:1000",
+    "reload_sentinel": "",
+    "health": {
+      "runtime": "node",
+      "url": "http://127.0.0.1:8080/api/health"
+    },
+    "excludes": [
+      ".git/",
+      "node_modules/",
+      "deploy/",
+      "scripts/",
+      "_reference/",
+      ".env",
+      ".env.*",
+      "packages/skills/olares-*/",
+      "packages/skills/.olares-cli-suite"
+    ],
+    "scopes": {
+      "all": {
+        "maps": [
+          {
+            "src": "./",
+            "dest": "./"
+          }
+        ],
+        "watch": [
+          "."
+        ]
+      }
+    }
+  }
+}
