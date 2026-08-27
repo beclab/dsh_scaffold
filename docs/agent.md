@@ -17,9 +17,13 @@ After install, continue the user’s request. Do not stop at the copy step.
 
 ## What the user is allowed to do
 
+This scaffold is a **template**. The git path is **fork → clone your fork**. `beclab/dsh_scaffold` is the upstream, not the repo they develop in. If `origin` is still `beclab/dsh_scaffold`, have them fork (or add their own remote) before they need to `git push`. Image build does not wait on that.
+
 This scaffold installs a chat on **the user’s own Olares** (`market upload` / `-s upload`). That is the whole product path.
 
 Do **not** open a public Market listing, a `beclab/apps` PR, or `docker push` to `beclab/` unless the user explicitly asked to publish. If they did not ask, never mention 上架 / public listing as a next step.
+
+**Image ≠ GitHub.** Unlike FlowStudio (`docker.io/beclab/flowstudio` from CI), this chat is built on the **laptop**. Skip-Hub: `docker build` → tag `docker.io/local/<name>:<ver>` → `docker save` → scp → `ctr import` on the node. That string is a local tag, not a Hub repo. Hub path: their repository from the panel, then Olares pulls. Never `docker push` to `beclab/`.
 
 ## Talk, don’t quiz
 
@@ -65,7 +69,7 @@ If Hub `loggedIn` is true but `docker push` later gets 401, open the panel and p
 | User says | You do |
 | --- | --- |
 | 装 cli / 登录 | `npm run preflight`；缺 CLI 则 `olares-cli-setup`，缺 Docker 则 `scripts/ensure-docker.sh`，通过后再开面板 |
-| 做一个自己的 chat / 改名 | panel first screen, or `node scripts/lib/apply-app-name.mjs <name>` — four names stay identical |
+| 做一个自己的 chat / 改名 | origin 若是 `beclab/dsh_scaffold`，先让用户 fork 到自己的 GitHub；然后 panel first screen, or `node scripts/lib/apply-app-name.mjs <name>` — four names stay identical |
 | 改标题 / 颜色 / 自称 | `packages/plugins/bundle-web/host/brand/identity.js` (+ `mark.js` for the icon) |
 | 加能力 / 插件 | new module under `packages/plugins/`, list it in `cordis.patch.yml` |
 | 这个 chat 自带 skill | write under `packages/skills/`; `olares-*` only via `npm run skills:sync` |

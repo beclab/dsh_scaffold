@@ -12,6 +12,8 @@ description: >-
 
 Turn overlays in `packages/` into an Olares chat package and install it from the **upload** source on the user's machine. This is not a public Market listing.
 
+This repo is a **template**. Users **fork** it and clone **their** fork. If they cloned `beclab/dsh_scaffold` as `origin`, they cannot push overlay work there — fork first. Image build is laptop Docker (`scripts/local-test.sh`), not GitHub CI and not a Hub pull of `docker.io/local/…`.
+
 ## First move
 
 1. Run `npm run preflight` (or `scripts/preflight.sh`). This is the first init step: Node.js 22+, `olares-cli`, a running Docker engine, and `olares-image/scripts/local-test.sh`.

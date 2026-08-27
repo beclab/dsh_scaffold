@@ -6,9 +6,13 @@
 
 仓库里已经有一份能跑的 chat（dsh web、模型接线、DinD、`olares-cli`）。你起个名字，按需改品牌，然后让 agent 装到你的机器上。
 
+这是一份 **模板**。先 fork 到你自己的 GitHub，再 clone **你的 fork**。不要把 `beclab/dsh_scaffold` 当成日常开发仓库。
+
+Chat 的镜像 **不是** 从 Docker Hub 拉的。agent 在你笔记本上用 Docker 构建，再拷到你的 Olares（`docker save` → 导入）。chart 里的 `docker.io/local/…` 只是本机标签名，不是要去网上 pull 的仓库。配置面板里如果填了你自己的 Hub 仓库，agent 会推到那里，Olares 再从 Hub 拉。
+
 ## 怎么开始
 
-1. 用 Cursor、Claude Code 或其它支持 skill 的 agent 打开这个文件夹。
+1. Fork 本仓库，clone 你的 fork，用 Cursor、Claude Code 或其它支持 skill 的 agent 打开那个文件夹。
 2. 直接说你要做什么，例如：
    - 「帮我装 olares-cli 并登录」
    - 「我想做一个自己的 chat，装到我的 Olares」

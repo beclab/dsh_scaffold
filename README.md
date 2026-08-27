@@ -6,9 +6,13 @@ Turn a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) overl
 
 The repo already ships a working chat (dsh web, models, DinD, `olares-cli`). You name it, brand it if you want, and ask the agent to put it on your machine.
 
+This is a **template**. Fork it to your GitHub, then clone **your fork**. Do not treat `beclab/dsh_scaffold` as the repo you develop in.
+
+The chat image is **not** downloaded from Docker Hub. The agent builds it on your laptop with Docker, then copies it onto your Olares (`docker save` → import). `docker.io/local/…` in the chart is only a local tag name, not a registry to pull from. If you fill in your own Hub repo in the setup panel, the agent pushes there instead and Olares pulls from Hub.
+
 ## Start here
 
-1. Open this folder in Cursor, Claude Code, or another skill-aware agent.
+1. Fork this repository, clone your fork, and open that folder in Cursor, Claude Code, or another skill-aware agent.
 2. Say what you want, for example:
    - “Install olares-cli and log me in”
    - “I want my own chat on my Olares”
