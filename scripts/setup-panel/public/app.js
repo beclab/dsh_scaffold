@@ -5,6 +5,7 @@ const STEP_IDS = [
   { id: "name", labelKey: "stepName" },
   { id: "docker", labelKey: "stepDocker" },
   { id: "olares", labelKey: "stepOlares" },
+  { id: "ssh", labelKey: "stepSsh" },
   { id: "done", labelKey: "stepDone" },
 ];
 
@@ -21,6 +22,7 @@ const state = {
   view: "env",
   skipHub: false,
   hubReady: false,
+  sshReady: false,
   config: null,
   preflight: null,
   finished: false,
@@ -56,7 +58,13 @@ function applyStaticText() {
   if (state.hubReady && $("docker-ok").textContent === "") {
     $("docker-ok").textContent = tr("probeOk");
   }
+  if (state.sshReady && $("ssh-ok").textContent === "") {
+    $("ssh-ok").textContent = tr("sshProbeOk");
+  }
   syncDockerNext();
+  syncSshNext();
+  syncSshSkip();
+  renderSshHost();
 }
 
 function renderSteps() {
@@ -129,6 +137,7 @@ function fillFromConfig(cfg, project) {
   $("desktopUrl").value = cfg.olares?.desktopUrl || "";
   state.skipHub = Boolean(cfg.dockerHub?.skip) || cfg.imageMode === "save";
   state.hubReady = Boolean(cfg.dockerHub?.loggedIn) && !state.skipHub;
+  state.sshReady = Boolean(cfg.olares?.sshOk);
 }
 
 function renderEnv(preflight) {
@@ -164,7 +173,7 @@ function renderSummary(cfg) {
     ["sumDesktop", cfg.olares.desktopUrl],
     ["sumId", cfg.olares.olaresId],
     ["sumLan", cfg.olares.lanIp || "—"],
-    ["sumSsh", cfg.olares.sshHost || cfg.olares.lanIp || "—"],
+    ["sumSsh", sshSummary(cfg)],
     ["sumPlatform", cfg.platform || "—"],
   ];
   $("summary").innerHTML = rows.map(([k, v]) => `<dt>${tr(k)}</dt><dd>${v}</dd>`).join("");
@@ -176,16 +185,52 @@ function setLang(lang) {
   show(state.view);
 }
 
+function sshSummary(cfg) {
+  const host = cfg.olares.sshHost || cfg.olares.lanIp || "";
+  if (!host) return "—";
+  return `root@${host}`;
+}
+
+function sshFieldsReady() {
+  if ($("sshPass").value) return true;
+  return Boolean(state.config?.olares?.sshOk);
+}
+
+function renderSshHost() {
+  const el = $("ssh-host");
+  if (!el) return;
+  const host = state.config?.olares?.sshHost || state.config?.olares?.lanIp || "";
+  el.textContent = host ? `${tr("sshHostLabel")} root@${host}` : tr("sshHostMissing");
+}
+
 function syncDockerNext() {
   const next = $("docker-next");
   if (!next) return;
   next.disabled = !state.hubReady;
 }
 
+function syncSshNext() {
+  const next = $("ssh-next");
+  if (!next) return;
+  next.disabled = !state.sshReady;
+}
+
+function syncSshSkip() {
+  const skip = $("ssh-skip");
+  if (!skip) return;
+  skip.classList.toggle("hidden", state.skipHub);
+}
+
 function resetHubReady() {
   state.hubReady = false;
   $("docker-ok").textContent = "";
   syncDockerNext();
+}
+
+function resetSshReady() {
+  state.sshReady = false;
+  $("ssh-ok").textContent = "";
+  syncSshNext();
 }
 
 async function boot() {
@@ -213,7 +258,13 @@ function closePanel() {
 
 function busy(button, on) {
   if (!button) return;
-  button.disabled = on ? true : button === $("docker-next") ? !state.hubReady : false;
+  button.disabled = on
+    ? true
+    : button === $("docker-next")
+      ? !state.hubReady
+      : button === $("ssh-next")
+        ? !state.sshReady
+        : false;
   button.classList.toggle("busy", on);
 }
 
@@ -224,6 +275,8 @@ for (const id of ["hubRepo", "hubUser", "hubPass"]) {
   $(id).addEventListener("input", resetHubReady);
 }
 
+$("sshPass").addEventListener("input", resetSshReady);
+
 document.querySelector(".panel").addEventListener("click", async (event) => {
   const next = event.target.dataset.next;
   const back = event.target.dataset.back;
@@ -232,7 +285,7 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
 
   try {
     if (back) {
-      show(back === "auto" ? "docker" : back);
+      show(back);
       return;
     }
 
@@ -306,7 +359,49 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
       $("olaresPass").value = "";
       $("olaresTotp").value = "";
       state.config = data.config;
-      renderSummary(data.config);
+      state.sshReady = Boolean(data.config?.olares?.sshOk);
+      if (!state.sshReady) $("ssh-ok").textContent = "";
+      show("ssh");
+      return;
+    }
+
+    if (next === "ssh-skip") {
+      if (state.skipHub) {
+        setError("ssh-error", tr("ssh_probe_required"), "ssh_probe_required");
+        return;
+      }
+      show("done");
+      if (state.config) renderSummary(state.config);
+      return;
+    }
+
+    if (next === "ssh-probe") {
+      setError("ssh-error");
+      $("ssh-ok").textContent = "";
+      if (!sshFieldsReady()) {
+        setError("ssh-error", tr("ssh_password_required"), "ssh_password_required");
+        return;
+      }
+      busy(button, true);
+      const data = await api("/api/step/ssh", {
+        password: $("sshPass").value,
+      });
+      $("sshPass").value = "";
+      state.sshReady = true;
+      state.config = data.config;
+      $("ssh-ok").textContent = tr("sshProbeOk");
+      syncSshNext();
+      renderSshHost();
+      return;
+    }
+
+    if (next === "ssh") {
+      setError("ssh-error");
+      if (!state.sshReady) {
+        setError("ssh-error", tr("ssh_probe_required"), "ssh_probe_required");
+        return;
+      }
+      if (state.config) renderSummary(state.config);
       show("done");
       return;
     }
@@ -329,6 +424,9 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
       docker: "docker-error",
       "docker-skip": "docker-error",
       "docker-probe": "docker-error",
+      ssh: "ssh-error",
+      "ssh-probe": "ssh-error",
+      "ssh-skip": "ssh-error",
       olares: "olares-error",
       finish: "done-error",
     };
@@ -336,6 +434,11 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
       state.hubReady = false;
       $("docker-ok").textContent = "";
       syncDockerNext();
+    }
+    if (next === "ssh-probe") {
+      state.sshReady = false;
+      $("ssh-ok").textContent = "";
+      syncSshNext();
     }
     setError(map[next] || "olares-error", err.message, err.errorKey);
   } finally {

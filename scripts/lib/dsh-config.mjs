@@ -4,7 +4,8 @@
  * Passwords and TOTP are never stored here.
  * Hub credentials stay in the machine Docker store after `docker login`
  * (~/.docker/config.json, often the OS keychain). Olares credentials stay
- * in the olares-cli profile / keychain. Later deploys reuse those sessions.
+ * in the olares-cli profile / keychain. SSH password is used once to install
+ * the laptop public key on the node; later deploys use BatchMode + that key.
  */
 import { mkdirSync, readFileSync, writeFileSync, chmodSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -67,6 +68,7 @@ export function emptyConfig() {
       olaresId: "",
       lanIp: "",
       sshHost: "",
+      sshUser: "root",
       sshOk: false,
       sshIdentity: "",
       loggedIn: false,
@@ -115,6 +117,7 @@ export function publicConfig(cfg = loadConfig()) {
       olaresId: cfg.olares?.olaresId || "",
       lanIp: cfg.olares?.lanIp || "",
       sshHost: cfg.olares?.sshHost || "",
+      sshUser: cfg.olares?.sshUser || "root",
       sshOk: Boolean(cfg.olares?.sshOk),
       sshIdentity: cfg.olares?.sshIdentity || "",
       loggedIn: Boolean(cfg.olares?.loggedIn),
@@ -138,7 +141,7 @@ export function saveConfig(cfg) {
 export function isComplete(cfg = loadConfig()) {
   if (validateAppName(cfg.appName || "")) return false;
   if (!cfg.olares?.olaresId || !cfg.olares?.desktopUrl) return false;
-  if (cfg.imageMode === "save" && (!cfg.olares?.lanIp || !cfg.olares?.sshOk)) return false;
+  if (cfg.imageMode === "save" && (!cfg.olares?.lanIp || !cfg.olares?.sshOk || !cfg.olares?.sshUser)) return false;
   if (cfg.imageMode === "push") {
     if (!cfg.dockerHub?.repository || !cfg.dockerHub?.username) return false;
   }
@@ -189,6 +192,7 @@ export function bashExports(cfg = loadConfig()) {
     OLARES_DESKTOP_URL: cfg.olares?.desktopUrl || "",
     OLARES_LAN_IP: cfg.olares?.lanIp || "",
     OLARES_SSH: cfg.olares?.sshHost || cfg.olares?.lanIp || "",
+    OLARES_SSH_USER: cfg.olares?.sshUser || "root",
     DOCKERHUB_REPOSITORY: cfg.dockerHub?.repository || "",
     DOCKERHUB_USERNAME: cfg.dockerHub?.username || "",
     IMAGE_MODE: cfg.imageMode || "save",

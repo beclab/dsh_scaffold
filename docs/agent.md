@@ -27,7 +27,7 @@ Do **not** open a public Market listing, a `beclab/apps` PR, or `docker push` to
 
 ## Talk, don’t quiz
 
-Drive the work. Ask only when you are blocked on a choice only they can make (name of the chat, which machine). Never collect Desktop URL, Hub password, Olares password, or TOTP in chat.
+Drive the work. Ask only when you are blocked on a choice only they can make (name of the chat, which machine). Never collect Desktop URL, Hub password, Olares password, TOTP, or SSH password in chat.
 
 ## Environment preflight (before configure)
 
@@ -44,16 +44,16 @@ npm run preflight
 | `olares-cli` missing or broken | Follow [olares-cli-setup](../__agent__/skills/olares-cli-setup/SKILL.md) (`ensure-olares-cli.sh`), then run preflight again. |
 | `docker` missing / daemon down / broken | Run `scripts/ensure-docker.sh`. That opens Docker Desktop if it is already installed, otherwise opens the Docker Desktop install page. Stop until `docker info` works. |
 | `olares-image` missing | `ensure-olares-cli.sh --with-skills`, then preflight again. |
-| `ssh` fail (save mode, after LAN IP is known) | Shown in the list; does not block opening the panel. Do **not** scp. User adds a root SSH key, or uses Hub push. Save-mode Finish still requires SSH. |
+| `ssh` fail (save mode, after LAN IP is known) | Shown in the list; does not block opening the panel. Do **not** scp. Open the panel; after Desktop login the SSH page uses that LAN IP, collects username and password (not in chat), and installs the laptop key. Or use Hub push. Save-mode Finish still requires SSH. |
 | all `ok` | `npm run configure` |
 
-`npm run configure` repeats Node / CLI / Docker / olares-image and **exits without opening the panel** if any of those is missing. Save-mode SSH is checked after Desktop login, and again on Finish. The panel writes `project.json` `image.platform` from the node architecture. Skip-Hub sets `image_repo` to `docker.io/local/<name>`, never `docker.io/beclab/*`.
+`npm run configure` repeats Node / CLI / Docker / olares-image and **exits without opening the panel** if any of those is missing. Save-mode SSH is checked on the SSH page after Desktop login (LAN IP is already known), and again on Finish. The panel writes `project.json` `image.platform` from the node architecture. Skip-Hub sets `image_repo` to `docker.io/local/<name>`, never `docker.io/beclab/*`.
 
 ```bash
 npm run configure
 ```
 
-The panel writes gitignored `.dsh/config.json` (names, Desktop, detected LAN IP, Hub repo + username). It never stores passwords or TOTP.
+The panel writes gitignored `.dsh/config.json` (names, Desktop, detected LAN IP, Hub repo + username, SSH username). It never stores passwords or TOTP.
 
 Later deploys reuse sessions already on the laptop:
 
@@ -61,6 +61,7 @@ Later deploys reuse sessions already on the laptop:
 | --- | --- |
 | Docker Hub password | `docker login` → Docker credential store (`~/.docker/config.json`, often the OS keychain). `docker push` uses that. |
 | Olares password / TOTP | `olares-cli profile login` → CLI profile / keychain. Market and cluster commands use the active profile. |
+| SSH password | Used once to log in and install this laptop's public key (`~/.ssh/dsh_olares`) on the node. Later `scp` / `ssh` use BatchMode + that key. Username is in `.dsh/config.json`. |
 
 If Hub `loggedIn` is true but `docker push` later gets 401, open the panel and probe again — do not ask for the password in chat. If the Olares profile is `never` / `invalidated`, open the panel (or interactive `profile login`). An `expired` access token normally refreshes on the next request.
 

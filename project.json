@@ -1,11 +1,11 @@
 {
-  "name": "dshscaffold",
-  "title": "DSH Scaffold",
-  "image_repo": "docker.io/local/dshscaffold",
-  "image_base_repo": "docker.io/local/dshscaffold-base",
+  "name": "test003",
+  "title": "test003",
+  "image_repo": "docker.io/local/test003",
+  "image_base_repo": "docker.io/local/test003-base",
   "image_base_tag": "3",
   "npm_scope": "@dsh",
-  "chart_dir": "deploy/dshscaffold",
+  "chart_dir": "deploy/test003",
   "image": {
     "dockerfile": "Dockerfile",
     "dockerfile_base": "Dockerfile.base",
@@ -15,8 +15,8 @@
   },
   "hot_reload": {
     "source_subpath": "devsrc",
-    "deploy": "dshscaffold",
-    "container": "dshscaffold",
+    "deploy": "test003",
+    "container": "test003",
     "chown": "1000:1000",
     "reload_sentinel": "",
     "health": {

@@ -134,9 +134,11 @@ body {
   font-size: 28px;
 }
 
-.lede {
-  margin: 0 0 24px;
-  color: var(--muted);
+.host {
+  margin: -8px 0 20px;
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 14px;
 }
 
 label {

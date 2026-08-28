@@ -1,8 +1,8 @@
-image: docker.io/local/dshscaffold:0.1.0
+image: docker.io/local/test003:0.1.0
 imagePullPolicy: IfNotPresent
 
 workloads:
-  dshscaffold:
+  test003:
     replicaCount: 1
 
 dev:

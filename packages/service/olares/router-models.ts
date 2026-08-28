@@ -194,7 +194,7 @@ async function probeUrl(
     return { url, catalog };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[dshscaffold] catalog miss at ${url}: ${message}`);
+    console.warn(`[test003] catalog miss at ${url}: ${message}`);
     return null;
   }
 }
@@ -284,7 +284,7 @@ async function discoverConsoles(env: ScaffoldEnv): Promise<ResolvedGateway | nul
   if (hits.length === 0) return null;
   const merged = mergeConsoleHits(hits);
   console.log(
-    `[dshscaffold] Model Console: ${hits.length} endpoint(s), ${merged.catalog.length} model(s)`,
+    `[test003] Model Console: ${hits.length} endpoint(s), ${merged.catalog.length} model(s)`,
   );
   return merged;
 }
@@ -306,7 +306,7 @@ export async function resolveRouterGateway(env: ScaffoldEnv): Promise<ResolvedGa
   if (gateway) return gateway;
 
   const fallback = gatewayCandidates(env)[0] ?? env.routerUrl;
-  console.warn(`[dshscaffold] no Router or Model Console catalog; using ${fallback}`);
+  console.warn(`[test003] no Router or Model Console catalog; using ${fallback}`);
   return {
     url: fallback,
     catalog: [],

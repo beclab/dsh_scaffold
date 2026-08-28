@@ -27,6 +27,7 @@ const ROOT = repoRoot();
 const PUBLIC = join(fileURLToPath(new URL(".", import.meta.url)), "public");
 const PORT = Number(process.env.SETUP_PANEL_PORT || 8788);
 const WAIT = process.argv.includes("--wait");
+const secrets = { sshPassword: "" };
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -258,14 +259,16 @@ function writeLocalRepo(appName) {
 
 function writeMachines(cfg) {
   const user = String(cfg.olares.olaresId || "").split("@", 1)[0] || "user";
+  const sshUser = "root";
   const sshHost = cfg.olares.sshHost || cfg.olares.lanIp || "";
+  const dest = !sshHost ? "" : sshHost.includes("@") ? sshHost : `${sshUser}@${sshHost}`;
   const machine = {
     id: 1,
     name: "olares",
     profile: cfg.olares.olaresId,
     olares_id: cfg.olares.olaresId,
     lan_ip: cfg.olares.lanIp || "",
-    ssh: sshHost,
+    ssh: dest,
     dest_dir: "",
     kube_ns: `${cfg.appName}-${user}`,
   };
@@ -273,6 +276,20 @@ function writeMachines(cfg) {
     machine.login = { root_ssh: `key ${cfg.olares.sshIdentity}` };
   }
   writeFileSync(join(ROOT, "machines.json"), `${JSON.stringify({ machines: [machine] }, null, 2)}\n`);
+}
+
+function rememberSshPassword(incoming) {
+  const password = String(incoming || "");
+  if (password) secrets.sshPassword = password;
+  return secrets.sshPassword;
+}
+
+function applySshProbe(cfg, ssh) {
+  cfg.olares.sshHost = ssh.host || cfg.olares.lanIp || "";
+  cfg.olares.sshOk = Boolean(ssh.ok);
+  cfg.olares.sshIdentity = ssh.identity || "";
+  if (ssh.user) cfg.olares.sshUser = ssh.user;
+  if (ssh.ok) secrets.sshPassword = "";
 }
 
 async function finish(cfg) {
@@ -326,7 +343,13 @@ const server = createServer(async (req, res) => {
       const cfg = loadConfig();
       cfg.appName = appName;
       saveConfig(cfg);
-      return send(res, 200, { ok: true, config: publicConfig(cfg) });
+      try {
+        applyAppName(appName);
+      } catch (err) {
+        const key = /reserved/.test(String(err?.message || "")) ? "name_reserved" : "name_invalid";
+        return fail(res, key);
+      }
+      return send(res, 200, { ok: true, config: publicConfig(cfg), project: loadProject() });
     }
 
     if (req.method === "POST" && url.pathname === "/api/step/docker") {
@@ -372,6 +395,26 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { ok: true, config: publicConfig(cfg) });
     }
 
+    if (req.method === "POST" && url.pathname === "/api/step/ssh") {
+      const body = await readJson(req);
+      const password = String(body.password || "");
+      const cfg = loadConfig();
+      const lanIp = cfg.olares.lanIp || cfg.olares.sshHost || "";
+      if (!lanIp) return fail(res, "lan_ip_required");
+      if (!password && !cfg.olares.sshOk) {
+        return fail(res, "ssh_password_required");
+      }
+      rememberSshPassword(password);
+      const ssh = probeSsh(lanIp, { user: "root", password: secrets.sshPassword });
+      cfg.olares.sshUser = "root";
+      applySshProbe(cfg, ssh);
+      saveConfig(cfg);
+      if (!ssh.ok) {
+        return fail(res, ssh.errorKey || "ssh_required", { lanIp });
+      }
+      return send(res, 200, { ok: true, config: publicConfig(cfg) });
+    }
+
     if (req.method === "POST" && url.pathname === "/api/step/olares") {
       const body = await readJson(req);
       const desktopUrl = String(body.desktopUrl || "").trim();
@@ -407,20 +450,18 @@ const server = createServer(async (req, res) => {
       if (cfg.imageMode === "save" && !detected.lanIp) {
         return fail(res, "lan_ip_required", { olaresId });
       }
-      const ssh = cfg.imageMode === "save" ? probeSsh(detected.lanIp) : { ok: true, host: "", identity: "" };
+      if (detected.lanIp && detected.lanIp !== cfg.olares.lanIp) {
+        cfg.olares.sshOk = false;
+        cfg.olares.sshIdentity = "";
+      }
       cfg.olares.desktopUrl = desktopUrl.includes("://") ? desktopUrl : `https://${desktopUrl}`;
       cfg.olares.olaresId = olaresId;
       cfg.olares.lanIp = detected.lanIp;
-      cfg.olares.sshHost = ssh.host || detected.lanIp;
-      cfg.olares.sshOk = Boolean(ssh.ok);
-      cfg.olares.sshIdentity = ssh.identity || "";
+      cfg.olares.sshHost = detected.lanIp;
       cfg.olares.loggedIn = true;
       cfg.olares.twoFactor = totp.length === 6;
       cfg.platform = writeImagePlatform(detected.arch);
       saveConfig(cfg);
-      if (cfg.imageMode === "save" && !ssh.ok) {
-        return fail(res, "ssh_required", { lanIp: detected.lanIp, arch: detected.arch });
-      }
       return send(res, 200, {
         ok: true,
         config: publicConfig(cfg),
@@ -440,13 +481,14 @@ const server = createServer(async (req, res) => {
         return fail(res, "lan_ip_required");
       }
       if (cfg.imageMode === "save") {
-        const ssh = probeSsh(cfg.olares.sshHost || cfg.olares.lanIp);
-        cfg.olares.sshHost = ssh.host || cfg.olares.lanIp;
-        cfg.olares.sshOk = Boolean(ssh.ok);
-        cfg.olares.sshIdentity = ssh.identity || "";
+        const ssh = probeSsh(cfg.olares.sshHost || cfg.olares.lanIp, {
+          user: "root",
+          password: secrets.sshPassword,
+        });
+        applySshProbe(cfg, ssh);
         if (!ssh.ok) {
           saveConfig(cfg);
-          return fail(res, "ssh_required");
+          return fail(res, ssh.errorKey || "ssh_required");
         }
       }
       if (validateAppName(cfg.appName) || !cfg.olares.olaresId) {

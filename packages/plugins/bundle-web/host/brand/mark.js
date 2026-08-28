@@ -2,11 +2,11 @@ import { PRODUCT_NAME, THEME_COLOR } from "./identity.js";
 
 export const MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="${PRODUCT_NAME}">
   <rect width="32" height="32" rx="8" fill="${THEME_COLOR}"/>
-  <text x="16" y="22" text-anchor="middle" fill="#fff8f2" font-size="16" font-family="ui-serif, Georgia, serif">D</text>
+  <text x="16" y="22" text-anchor="middle" fill="#fff8f2" font-size="16" font-family="ui-serif, Georgia, serif">T</text>
 </svg>`;
 
-export const MARK_PATH = "/dshscaffold/mark.svg";
-export const MANIFEST_PATH = "/dshscaffold/manifest.webmanifest";
+export const MARK_PATH = "/test003/mark.svg";
+export const MANIFEST_PATH = "/test003/manifest.webmanifest";
 
 export const MANIFEST = {
   id: "/",

@@ -33,7 +33,7 @@
 
         <section id="view-name" class="card hidden">
           <h2 data-i18n="nameTitle">确认项目名称</h2>
-          <p class="lede" data-i18n="nameLede">将写入 chart / 镜像名。小写字母开头，至少 4 位，不要用 test、app、web。</p>
+          <p class="lede" data-i18n="nameLede">将写入 chart、镜像名和界面品牌名。小写字母开头，至少 4 位，不要用 test、app、web。</p>
           <label><span data-i18n="nameLabel">项目名称</span> <input id="appName" autocomplete="off" spellcheck="false" /></label>
           <p id="name-error" class="error"></p>
           <div class="actions">
@@ -68,8 +68,23 @@
           </label>
           <p id="olares-error" class="error"></p>
           <div class="actions">
-            <button type="button" class="ghost" data-back="auto" data-i18n="back">上一步</button>
+            <button type="button" class="ghost" data-back="docker" data-i18n="back">上一步</button>
             <button type="button" class="primary" data-next="olares" data-i18n="verify">验证并继续</button>
+          </div>
+        </section>
+
+        <section id="view-ssh" class="card hidden">
+          <h2 data-i18n="sshTitle">节点 SSH</h2>
+          <p class="lede" data-i18n="sshLede">用上一页读到的局域网地址测试 SSH。密码只用于当场登录并写入本机公钥，不会进配置文件。</p>
+          <p id="ssh-host" class="host"></p>
+          <label><span data-i18n="sshPassLabel">密码</span> <input id="sshPass" type="password" autocomplete="current-password" /></label>
+          <p id="ssh-error" class="error"></p>
+          <p id="ssh-ok" class="ok"></p>
+          <div class="actions">
+            <button type="button" class="ghost" data-back="olares" data-i18n="back">上一步</button>
+            <button type="button" class="ghost hidden" id="ssh-skip" data-next="ssh-skip" data-i18n="skip">跳过</button>
+            <button type="button" class="ghost" data-next="ssh-probe" data-i18n="probe">测试联通</button>
+            <button type="button" class="primary" id="ssh-next" data-next="ssh" data-i18n="next" disabled>下一步</button>
           </div>
         </section>
 

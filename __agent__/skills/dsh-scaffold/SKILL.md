@@ -17,7 +17,7 @@ This repo is a **template**. Users **fork** it and clone **their** fork. If they
 ## First move
 
 1. Run `npm run preflight` (or `scripts/preflight.sh`). This is the first init step: Node.js 22+, `olares-cli`, a running Docker engine, and `olares-image/scripts/local-test.sh`.
-2. If Node is missing or older than 22, stop and tell the user to install Node.js 22+. If `olares-cli` is missing, follow [olares-cli-setup](../olares-cli-setup/SKILL.md). If Docker is missing or the engine is down, run `scripts/ensure-docker.sh`. If `olares-image` is missing, run `ensure-olares-cli.sh --with-skills`. If save-mode SSH fails later, do not scp — have the user add a root key or use Hub push.
+2. If Node is missing or older than 22, stop and tell the user to install Node.js 22+. If `olares-cli` is missing, follow [olares-cli-setup](../olares-cli-setup/SKILL.md). If Docker is missing or the engine is down, run `scripts/ensure-docker.sh`. If `olares-image` is missing, run `ensure-olares-cli.sh --with-skills`. If save-mode SSH fails later, do not scp — reopen the panel so they can enter SSH username and password, or use Hub push.
 3. Only after preflight passes: if the user wants to deploy and `.dsh/config.json` is missing or incomplete, run `npm run configure`. That command repeats the same check and will not open the panel if Node / CLI / Docker / olares-image is missing. Do not collect Desktop / Hub / passwords in chat.
 4. Then follow [docs/agent.md](../../../docs/agent.md):
    - Overlay / plugin / local run → [references/develop.md](references/develop.md)

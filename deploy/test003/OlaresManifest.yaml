@@ -2,9 +2,9 @@ apiVersion: v3
 olaresManifest.version: '0.15.0'
 olaresManifest.type: app
 metadata:
-  name: dshscaffold
-  appid: dshscaffold
-  title: DSH Scaffold
+  name: test003
+  appid: test003
+  title: test003
   description: Chat package scaffold on DeepSeek Harness for upload to your Olares
   icon: https://avatars.githubusercontent.com/u/148330874
   version: 0.1.0
@@ -51,10 +51,10 @@ permission:
   userData:
     - Home
 entrances:
-  - name: dshscaffold
-    host: dshscaffold-svc
+  - name: test003
+    host: test003-svc
     port: 8080
-    title: DSH Scaffold
+    title: test003
     icon: https://avatars.githubusercontent.com/u/148330874
     authLevel: private
     openMethod: window
@@ -63,9 +63,9 @@ options:
   allowedOutboundPorts:
     - 22
   policies:
-    - entranceName: dshscaffold
+    - entranceName: test003
       description: Brand mark and PWA manifest
-      uriRegex: ^/dshscaffold/(mark\.svg|manifest\.webmanifest)$
+      uriRegex: ^/test003/(mark\.svg|manifest\.webmanifest)$
       level: public
   dependencies:
     - name: olares
@@ -80,7 +80,7 @@ options:
       type: application
       mandatory: false
 workloadReplicas:
-  dshscaffold: 1
+  test003: 1
 envs:
   - envName: TIMEZONE
     required: true

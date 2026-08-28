@@ -38,7 +38,7 @@ export async function bootDshWeb(): Promise<void> {
   const resolved = await resolveRouterGateway(env);
   if (resolved.catalog.length > 0) {
     const label = resolved.kind === "model-console" ? "Model Console" : "Router";
-    console.log(`[dshscaffold] ${label} catalog: ${resolved.catalog.length} model(s) at ${resolved.url}`);
+    console.log(`[test003] ${label} catalog: ${resolved.catalog.length} model(s) at ${resolved.url}`);
   }
   const chatFallback = pickChatModelId(resolved.catalog) ?? process.env.DSH_MODEL?.trim() ?? null;
 
@@ -52,9 +52,9 @@ export async function bootDshWeb(): Promise<void> {
   if (bootstrapped.changed) {
     const route = bootstrapped.routeSeeded ? "seeded" : "updated";
     console.log(
-      `[dshscaffold] ${route} llm-pi-ai provider olares-router (${bootstrapped.routeModels} model(s))`,
+      `[test003] ${route} llm-pi-ai provider olares-router (${bootstrapped.routeModels} model(s))`,
     );
-    console.log(`[dshscaffold] agent-default-model → ${bootstrapped.model ?? "(unset)"}`);
+    console.log(`[test003] agent-default-model → ${bootstrapped.model ?? "(unset)"}`);
   }
 
   // dsh CLI rejects --host 0.0.0.0; bind is forced in @dsh/bundle-web.
@@ -95,10 +95,10 @@ export async function bootDshWeb(): Promise<void> {
   };
 
   console.log(
-    `[dshscaffold] starting dsh web profile=${DSH_WEB_PROFILE} bind=http://${bindHost}:${env.port} (cli --host ${cliHost})`,
+    `[test003] starting dsh web profile=${DSH_WEB_PROFILE} bind=http://${bindHost}:${env.port} (cli --host ${cliHost})`,
   );
   console.log(
-    `[dshscaffold] DSH_HOME=${dshHome} workspace=${env.workspace} model=${bootstrapped.model ?? "(unset)"}`,
+    `[test003] DSH_HOME=${dshHome} workspace=${env.workspace} model=${bootstrapped.model ?? "(unset)"}`,
   );
 
   const dshArgs = [

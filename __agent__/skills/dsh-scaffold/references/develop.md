@@ -53,7 +53,7 @@ Rename **before** the first upload. Prefer `npm run configure` (first screen) or
 node scripts/lib/apply-app-name.mjs mychat
 ```
 
-That keeps the four names identical (see the parent skill) and rewrites `hot_reload.deploy` / `container`, chart templates, and env defaults. Display title and theme stay in `packages/plugins/bundle-web/host/brand/identity.js` — change those separately.
+That keeps the four names identical (see the parent skill) and rewrites `hot_reload.deploy` / `container`, chart templates, env defaults, image names, and the on-screen brand (`packages/plugins/bundle-web/host/brand/identity.js`). Theme color stays in that file.
 
 Pattern: `^[a-z][a-z0-9]{3,29}$`. Rejected: `test`, `app`, `web`, `dsh`, and other reserved words. Short generic names poison paths like `/data/<name>` and Helm keys.
 

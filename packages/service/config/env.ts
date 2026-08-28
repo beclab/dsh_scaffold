@@ -39,10 +39,10 @@ export function loadEnv(): ScaffoldEnv {
     modelConsoleUrl: readString("MODEL_CONSOLE_URL")?.replace(/\/+$/, "") ?? null,
     modelConsoleUrls: readString("MODEL_CONSOLE_URLS"),
     modelConsoleApps: readString("MODEL_CONSOLE_APPS"),
-    olaresAppId: readString("OLARES_APP_ID") ?? "dshscaffold",
+    olaresAppId: readString("OLARES_APP_ID") ?? "test003",
     sysVersion: readString("OLARES_SYS_VERSION") ?? readString("OLARES_SYSTEM_VERSION"),
     workspace: readString("DSH_WORKSPACE") ?? "/data/workspace",
-    dataDir: readString("DSH_DATA_DIR") ?? "/data/dshscaffold",
+    dataDir: readString("DSH_DATA_DIR") ?? "/data/test003",
     cliRoot: readString("DSH_CLI_ROOT") ?? "/data/cli",
     homeDir: readString("HOME") ?? "/data/home",
   };

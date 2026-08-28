@@ -17,7 +17,7 @@ export function inspectEnv() {
   const checks = [inspectNode(), inspectCli(), inspectDocker(), inspectImageSkill()];
   const cfg = loadConfig();
   if (cfg.imageMode !== "push" && cfg.olares?.lanIp) {
-    checks.push(inspectSsh(cfg.olares.sshHost || cfg.olares.lanIp));
+    checks.push(inspectSsh(cfg.olares.sshHost || cfg.olares.lanIp, "root"));
   }
   const required = checks.filter((c) => c.id !== "ssh");
   return { ok: required.every((c) => c.ok), checks };
@@ -97,12 +97,13 @@ export function inspectImageSkill() {
   return { id: "olares-image", ok: false, version: "", errorKey: "image_skill_missing" };
 }
 
-export function inspectSsh(host) {
-  const probe = probeSsh(host);
+export function inspectSsh(host, user) {
+  const probe = probeSsh(host, { user });
+  const who = `${probe.user || user || "root"}@${probe.host || host || ""}`;
   if (probe.ok) {
-    return { id: "ssh", ok: true, version: `root@${probe.host}`, errorKey: "" };
+    return { id: "ssh", ok: true, version: who, errorKey: "" };
   }
-  return { id: "ssh", ok: false, version: host || "", errorKey: "ssh_required" };
+  return { id: "ssh", ok: false, version: who.replace(/@$/, "") || host || "", errorKey: probe.errorKey || "ssh_required" };
 }
 
 export function parseCliVersion(text) {
@@ -150,7 +151,11 @@ function hint(errorKey, zh) {
         docker_daemon: "Docker 已安装但引擎未就绪，请打开 Docker Desktop 后再试",
         docker_broken: "docker 无法运行，请重装 Docker Desktop",
         image_skill_missing: "缺少 olares-image。请运行 __agent__/skills/olares-cli-setup/scripts/ensure-olares-cli.sh --with-skills",
-        ssh_required: "本机无法免密 SSH 到节点。把公钥加到 root，或回到上一步用 Hub 推送",
+        ssh_required: "本机无法 SSH 到节点。回到配置面板填写 SSH 用户名和密码，或改用 Hub 推送",
+        ssh_login_failed: "SSH 用户名或密码不对。节点用户一般是 root，不是 Olares ID",
+        ssh_unreachable: "连不上节点 SSH。确认机器在线后再试",
+        ssh_keygen_failed: "无法在本机生成 SSH 公钥",
+        ssh_key_install_failed: "SSH 密码可用，但没能把本机公钥写到节点",
       }
     : {
         node_missing: "Install Node.js 22+ and put node on PATH",
@@ -161,7 +166,11 @@ function hint(errorKey, zh) {
         docker_daemon: "Docker is installed but the engine is down. Start Docker Desktop",
         docker_broken: "docker did not run; reinstall Docker Desktop",
         image_skill_missing: "olares-image is missing. Run __agent__/skills/olares-cli-setup/scripts/ensure-olares-cli.sh --with-skills",
-        ssh_required: "Cannot SSH as root to the node. Add your public key, or go back and push via Hub",
+        ssh_required: "Cannot SSH to the node. Reopen the panel and enter SSH username and password, or push via Hub",
+        ssh_login_failed: "SSH username or password was rejected. The node user is usually root, not the Olares ID",
+        ssh_unreachable: "Could not reach SSH on the node. Confirm it is online and retry",
+        ssh_keygen_failed: "Could not generate a local SSH key",
+        ssh_key_install_failed: "SSH password worked, but the laptop public key could not be installed on the node",
       };
   return table[errorKey] || errorKey;
 }
