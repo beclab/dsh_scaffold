@@ -178,7 +178,7 @@ export function patchConnectionTrustFences(): void {
   const trustedHostSource = trustOlaresConnectionHost(hostSource);
   if (trustedHostSource !== hostSource) writeFileSync(hostLib, trustedHostSource);
 
-  console.log("[test003] dsh-client-connection trust fences → Olares trusted hosts");
+  console.log("[dshscaffold] dsh-client-connection trust fences → Olares trusted hosts");
 }
 
 /** Absolute path to the published dsh CLI entry. */

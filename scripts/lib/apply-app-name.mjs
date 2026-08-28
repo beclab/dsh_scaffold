@@ -118,6 +118,10 @@ function applyBrandTitle(root, title, chartDir, oldTitle) {
   }
 }
 
+function displayTitle(appName) {
+  return appName === "dshscaffold" ? "DSH Scaffold" : appName;
+}
+
 export function applyAppName(newName) {
   const errorKey = validateAppName(newName);
   if (errorKey) {
@@ -126,7 +130,7 @@ export function applyAppName(newName) {
   const root = repoRoot();
   const project = loadProject();
   const oldName = project.name;
-  const title = newName;
+  const title = displayTitle(newName);
   const projectPath = join(root, "project.json");
   const projectData = JSON.parse(readFileSync(projectPath, "utf8"));
   const oldTitle = String(projectData.title || "").trim() || readProductName(root) || "DSH Scaffold";

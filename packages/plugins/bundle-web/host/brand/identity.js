@@ -1,4 +1,4 @@
-export const PRODUCT_NAME = "test003";
+export const PRODUCT_NAME = "DSH Scaffold";
 export const PLATFORM_NAME = "Olares";
 export const THEME_COLOR = "#B4532A";
 

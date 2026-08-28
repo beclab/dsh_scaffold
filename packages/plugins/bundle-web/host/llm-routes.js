@@ -80,7 +80,7 @@ function applyModelRewrite(body, rewriteModel) {
 
 function proxyRequest(req, res, targetUrl, body) {
   const apiKey = process.env.DSH_ROUTER_API_KEY?.trim() || null;
-  const olaresAppId = process.env.OLARES_APP_ID?.trim() || "test003";
+  const olaresAppId = process.env.OLARES_APP_ID?.trim() || "dshscaffold";
 
   const rawUrl = req.url ?? "/";
   const u = new URL(rawUrl, "http://x");
@@ -157,7 +157,7 @@ function fetchJson(url, headers) {
 
 async function mergeModels(res) {
   const apiKey = process.env.DSH_ROUTER_API_KEY?.trim() || null;
-  const olaresAppId = process.env.OLARES_APP_ID?.trim() || "test003";
+  const olaresAppId = process.env.OLARES_APP_ID?.trim() || "dshscaffold";
   const headers = {
     ...routerAuthHeaders(apiKey, olaresAppId),
     accept: "application/json",
@@ -183,7 +183,7 @@ async function mergeModels(res) {
           data.push(row);
         }
       } catch (err) {
-        console.warn(`[test003] merge /models miss at ${url}: ${err.message}`);
+        console.warn(`[dshscaffold] merge /models miss at ${url}: ${err.message}`);
       }
     }
   }
@@ -241,11 +241,11 @@ export function apply(ctx) {
           res.end(
             JSON.stringify({
               ok: true,
-              app: process.env.OLARES_APP_ID ?? "test003",
+              app: process.env.OLARES_APP_ID ?? "dshscaffold",
               kernel: "dsh-web",
               routerUrl,
               upstreamKind: process.env.LLM_UPSTREAM_KIND ?? "router",
-              olaresAppId: process.env.OLARES_APP_ID ?? "test003",
+              olaresAppId: process.env.OLARES_APP_ID ?? "dshscaffold",
               hasRouterKey: Boolean(process.env.DSH_ROUTER_API_KEY?.trim()),
             }),
           );
