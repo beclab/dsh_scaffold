@@ -613,12 +613,37 @@ end tell`;
   }
 }
 
+async function existingPanel(port) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/state`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data?.project || data?.config);
+  } catch {
+    return false;
+  }
+}
+
 const env = inspectEnv();
 printReport(env);
 if (!env.ok) process.exit(1);
 
+const href = `http://127.0.0.1:${PORT}/`;
+server.on("error", async (err) => {
+  if (err?.code !== "EADDRINUSE") {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
+  if (await existingPanel(PORT)) {
+    console.log(`DSH 配置面板已在运行: ${href}`);
+    openPanel(href);
+    process.exit(0);
+    return;
+  }
+  console.error(`Port ${PORT} is already in use. Stop the other process or set SETUP_PANEL_PORT.`);
+  process.exit(1);
+});
 server.listen(PORT, "127.0.0.1", () => {
-  const href = `http://127.0.0.1:${PORT}/`;
   console.log(`DSH 配置面板: ${href}`);
   openPanel(href);
 });
