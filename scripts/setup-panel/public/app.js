@@ -135,7 +135,7 @@ function fillFromConfig(cfg, project) {
   $("hubRepo").value = cfg.dockerHub?.repository || "";
   $("hubUser").value = cfg.dockerHub?.username || "";
   $("desktopUrl").value = cfg.olares?.desktopUrl || "";
-  $("sshUser").value = cfg.olares?.sshUser || "root";
+  $("sshUser").value = cfg.olares?.sshUser || "olares";
   $("sshPort").value = Number(cfg.olares?.sshPort) > 0 && Number(cfg.olares.sshPort) !== 22 ? String(Number(cfg.olares.sshPort)) : "";
   state.skipHub = Boolean(cfg.dockerHub?.skip) || cfg.imageMode === "save";
   state.hubReady = Boolean(cfg.dockerHub?.loggedIn) && !state.skipHub;
@@ -188,7 +188,7 @@ function setLang(lang) {
 }
 
 function sshUserValue() {
-  return $("sshUser").value.trim() || state.config?.olares?.sshUser || "root";
+  return $("sshUser").value.trim() || state.config?.olares?.sshUser || "olares";
 }
 
 function sshPortValue() {
@@ -200,7 +200,7 @@ function sshPortValue() {
 
 function sshSummary(cfg) {
   const host = cfg.olares.sshHost || cfg.olares.lanIp || "";
-  const user = cfg.olares.sshUser || "root";
+  const user = cfg.olares.sshUser || "olares";
   const port = Number(cfg.olares.sshPort) || 0;
   if (!host) return "—";
   const who = `${user}@${host}`;
@@ -212,7 +212,7 @@ function sshFieldsReady() {
   const host = state.config?.olares?.lanIp || state.config?.olares?.sshHost || "";
   if (!user || !host) return false;
   if ($("sshPass").value) return true;
-  const savedUser = state.config?.olares?.sshUser || "root";
+  const savedUser = state.config?.olares?.sshUser || "olares";
   const savedPort = Number(state.config?.olares?.sshPort) || 0;
   const port = sshPortValue();
   const normalizedPort = port === 22 ? 0 : port;

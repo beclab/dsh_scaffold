@@ -45,13 +45,13 @@ export function parseSshEndpoint(raw, defaults = {}) {
   const fallbackUser = String(defaults.user || "").trim();
   let text = String(raw || "").trim();
   if (!text) {
-    return { user: fallbackUser || "root", host: "", port: 0 };
+    return { user: fallbackUser || "olares", host: "", port: 0 };
   }
 
   if (/^ssh:\/\//i.test(text)) {
     try {
       const url = new URL(text);
-      const user = decodeURIComponent(url.username || fallbackUser || "root") || "root";
+      const user = decodeURIComponent(url.username || fallbackUser || "olares") || "olares";
       const host = url.hostname || "";
       const port = url.port ? Number(url.port) : 0;
       return { user, host, port: Number.isFinite(port) ? port : 0 };
@@ -78,7 +78,7 @@ export function parseSshEndpoint(raw, defaults = {}) {
         const n = Number(after.slice(1));
         if (Number.isFinite(n) && n > 0) port = n;
       }
-      return { user: user || "root", host, port };
+      return { user: user || "olares", host, port };
     }
   }
 
@@ -88,20 +88,20 @@ export function parseSshEndpoint(raw, defaults = {}) {
     if (parts.length === 2 && /^\d+$/.test(parts[1])) {
       const port = Number(parts[1]);
       return {
-        user: user || "root",
+        user: user || "olares",
         host: parts[0],
         port: Number.isFinite(port) && port > 0 ? port : 0,
       };
     }
   }
 
-  return { user: user || "root", host: rest, port: 0 };
+  return { user: user || "olares", host: rest, port: 0 };
 }
 
 export function formatSshEndpoint({ user, host, port } = {}) {
-  if (!host) return user || "root";
+  if (!host) return user || "olares";
   const h = host.includes(":") ? `[${host}]` : host;
-  const who = `${user || "root"}@${h}`;
+  const who = `${user || "olares"}@${h}`;
   const n = Number(port) || 0;
   return n > 0 && n !== 22 ? `${who}:${n}` : who;
 }
@@ -134,8 +134,10 @@ function sshOnce(user, host, port, identity) {
 }
 
 function candidateKeys() {
-  return ["", DSH_SSH_KEY, join(homedir(), ".ssh/olares_flowstudio"), join(homedir(), ".ssh/id_ed25519"), join(homedir(), ".ssh/id_rsa")].filter(
-    (p, i) => i === 0 || existsSync(p),
+  // Prefer explicit key files so machines.json can persist SSH_IDENTITY.
+  // Empty string (ssh-agent / default Identities) is last resort.
+  return [DSH_SSH_KEY, join(homedir(), ".ssh/olares_flowstudio"), join(homedir(), ".ssh/id_ed25519"), join(homedir(), ".ssh/id_rsa"), ""].filter(
+    (p) => p === "" || existsSync(p),
   );
 }
 
@@ -147,16 +149,6 @@ function pingOk(host) {
 
 function reachable(host) {
   return Boolean(host) && pingOk(host);
-}
-
-function hostsFor(lanIp) {
-  const preferred = parseSshEndpoint(lanIp).host;
-  const hosts = [];
-  // Always try the configured / Desktop address first (ICMP may be blocked).
-  if (preferred) hosts.push(preferred);
-  // Wired USB Ethernet is only a fallback when that interface answers ping.
-  if (WIRED !== preferred && reachable(WIRED)) hosts.push(WIRED);
-  return hosts;
 }
 
 function withAskpass(password, run) {
@@ -236,14 +228,25 @@ function installAuthorizedKey(user, host, port, password, identity) {
   if (!existsSync(pubPath)) return false;
   const pub = readFileSync(pubPath, "utf8").trim();
   if (!pub) return false;
-  const quoted = shellQuote(pub);
+  // Olares images often ship ~/.ssh/authorized_keys as root:root. Expand $HOME in
+  // the login shell first; sudo resets HOME to /root, so paths must be literal.
   const remote = [
+    "set -e",
     "umask 077",
-    "mkdir -p ~/.ssh",
-    `grep -Fqx ${quoted} ~/.ssh/authorized_keys 2>/dev/null || printf '%s\\n' ${quoted} >> ~/.ssh/authorized_keys`,
-    "chmod 700 ~/.ssh",
-    "chmod 600 ~/.ssh/authorized_keys",
-  ].join(" && ");
+    "mkdir -p \"$HOME/.ssh\"",
+    `KEY=${shellQuote(pub)}`,
+    `PASS=${shellQuote(password)}`,
+    "AK=\"$HOME/.ssh/authorized_keys\"",
+    "SSH_DIR=\"$HOME/.ssh\"",
+    "OWNER=\"$(id -u):$(id -g)\"",
+    "if [ ! -e \"$AK\" ] || [ -w \"$AK\" ]; then",
+    "  grep -Fqx \"$KEY\" \"$AK\" 2>/dev/null || printf '%s\\n' \"$KEY\" >> \"$AK\"",
+    "else",
+    "  printf '%s\\n' \"$PASS\" | sudo -S -p '' bash -c \"set -e; AK='$AK'; SSH_DIR='$SSH_DIR'; OWNER='$OWNER'; KEY=$(printf %q \"$KEY\"); mkdir -p \\\"$SSH_DIR\\\"; touch \\\"$AK\\\"; grep -Fqx \\\"$KEY\\\" \\\"$AK\\\" 2>/dev/null || printf '%s\\\\n' \\\"$KEY\\\" >> \\\"$AK\\\"; chown \\\"$OWNER\\\" \\\"$SSH_DIR\\\" \\\"$AK\\\"; chmod 700 \\\"$SSH_DIR\\\"; chmod 600 \\\"$AK\\\"\"",
+    "fi",
+    "chmod 700 \"$SSH_DIR\" 2>/dev/null || true",
+    "chmod 600 \"$AK\" 2>/dev/null || true",
+  ].join("\n");
   return sshWithPassword(user, host, port, password, remote).ok;
 }
 
@@ -267,53 +270,50 @@ function tryKeys(user, host, port) {
  */
 export function probeSsh(lanIp, options = {}) {
   const parsed = parseSshEndpoint(lanIp, { user: options.user });
-  const user = String(options.user || parsed.user || "root").trim() || "root";
+  const user = String(options.user || parsed.user || "olares").trim() || "olares";
   const port = Number(options.port || parsed.port || 0) || 0;
-  const hosts = hostsFor(parsed.host || lanIp);
-  let passwordOk = false;
-  let lastError = hosts.length ? "ssh_required" : "ssh_unreachable";
+  const preferred = parsed.host || "";
   const password = String(options.password || "");
+  let passwordOk = false;
+  let lastError = preferred ? "ssh_required" : "ssh_unreachable";
 
-  for (const host of hosts) {
+  const tryHost = (host) => {
     const keyed = tryKeys(user, host, port);
     if (keyed.ok) return keyed;
     if (keyed.errorKey) lastError = keyed.errorKey;
-  }
+    if (!password) return null;
 
-  if (!password) {
-    return {
-      ok: false,
-      host: parsed.host || lanIp || hosts[0] || "",
-      port,
-      user,
-      identity: "",
-      errorKey: lastError,
-    };
-  }
-
-  for (const host of hosts) {
     const attempt = sshWithPassword(user, host, port, password, "true");
     if (!attempt.ok) {
       lastError = attempt.errorKey || lastError;
-      continue;
+      return null;
     }
     passwordOk = true;
     const identity = ensureLocalKey();
     if (!identity) {
       return { ok: false, host, port, user, identity: "", errorKey: "ssh_keygen_failed" };
     }
-    if (
-      installAuthorizedKey(user, host, port, password, identity) &&
-      sshOnce(user, host, port, identity).ok
-    ) {
+    if (installAuthorizedKey(user, host, port, password, identity) && sshOnce(user, host, port, identity).ok) {
       return { ok: true, host, port, user, identity, errorKey: "" };
     }
     lastError = "ssh_key_install_failed";
+    return null;
+  };
+
+  if (preferred) {
+    const result = tryHost(preferred);
+    if (result) return result;
+  }
+
+  // Only fall back to USB Ethernet when the detected address is unreachable.
+  if (lastError === "ssh_unreachable" && WIRED && WIRED !== preferred && reachable(WIRED)) {
+    const result = tryHost(WIRED);
+    if (result) return result;
   }
 
   return {
     ok: false,
-    host: parsed.host || lanIp || hosts[0] || "",
+    host: preferred || WIRED || "",
     port,
     user,
     identity: "",

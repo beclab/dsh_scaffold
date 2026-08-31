@@ -260,9 +260,9 @@ function writeLocalRepo(appName) {
 function writeMachines(cfg) {
   const user = String(cfg.olares.olaresId || "").split("@", 1)[0] || "user";
   const parsed = parseSshEndpoint(cfg.olares.sshHost || cfg.olares.lanIp || "", {
-    user: cfg.olares.sshUser || "root",
+    user: cfg.olares.sshUser || "olares",
   });
-  const sshUser = cfg.olares.sshUser || parsed.user || "root";
+  const sshUser = cfg.olares.sshUser || parsed.user || "olares";
   const host = parsed.host || cfg.olares.lanIp || "";
   const port = Number(cfg.olares.sshPort) > 0 ? Number(cfg.olares.sshPort) : parsed.port || 0;
   const dest = host ? `${sshUser}@${host}` : "";
@@ -521,7 +521,7 @@ const server = createServer(async (req, res) => {
       if (cfg.imageMode === "save") {
         const host = cfg.olares.lanIp || cfg.olares.sshHost;
         const ssh = probeSsh(host, {
-          user: cfg.olares.sshUser || "root",
+          user: cfg.olares.sshUser || "olares",
           port: cfg.olares.sshPort,
           password: secrets.sshPassword,
         });
