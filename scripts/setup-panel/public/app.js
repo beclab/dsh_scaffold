@@ -80,8 +80,12 @@ function isBefore(id) {
 
 function show(view) {
   state.view = view;
-  document.querySelectorAll(".card").forEach((el) => el.classList.add("hidden"));
-  $(`view-${view}`).classList.remove("hidden");
+  document.querySelectorAll(".card").forEach((el) => {
+    const on = el.id === `view-${view}`;
+    el.classList.toggle("hidden", !on);
+    if (on) el.removeAttribute("inert");
+    else el.setAttribute("inert", "");
+  });
   applyStaticText();
   renderSteps();
   if (state.config && view === "done") renderSummary(state.config);
@@ -314,11 +318,30 @@ for (const id of ["sshUser", "sshPort", "sshPass"]) {
   });
 }
 
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.key !== "Enter" && event.key !== "NumpadEnter") return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  },
+  true,
+);
+
+document.querySelectorAll("form.step-form").forEach((form) => {
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+  });
+});
+
 document.querySelector(".panel").addEventListener("click", async (event) => {
-  const next = event.target.dataset.next;
-  const back = event.target.dataset.back;
+  const button = event.target.closest("[data-next], [data-back]");
+  if (!button || !event.currentTarget.contains(button)) return;
+  const next = button.dataset.next;
+  const back = button.dataset.back;
   if (!next && !back) return;
-  const button = event.target;
 
   try {
     if (back) {
@@ -462,6 +485,7 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
     }
 
     if (next === "finish") {
+      if (state.view !== "done" || button.id !== "finish-btn") return;
       setError("done-error");
       busy(button, true);
       const data = await api("/api/finish", {});

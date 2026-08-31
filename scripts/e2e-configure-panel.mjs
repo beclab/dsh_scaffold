@@ -185,6 +185,16 @@ async function main() {
     report.steps.push(snap);
     report.issues.push(...clarityIssues(snap).map((m) => `olares: ${m}`));
     await page.type("#desktopUrl", seeded.olares.desktopUrl, { clear: true });
+    await page.type("#olaresPass", "x", { clear: true });
+    await page.press("Enter");
+    await page.sleep(400);
+    const olaresAfterEnter = await page.evaluate(() => ({
+      href: location.href,
+      view: [...document.querySelectorAll(".card")].find((c) => !c.classList.contains("hidden"))?.id || "",
+    }));
+    if (!olaresAfterEnter.href.includes("127.0.0.1:8788") || olaresAfterEnter.view !== "view-olares") {
+      throw new Error(`olares Enter closed panel: ${JSON.stringify(olaresAfterEnter)}`);
+    }
     await page.type("#olaresPass", "", { clear: true });
     await page.click('[data-next="olares"]');
     await page.waitFor(
@@ -209,6 +219,15 @@ async function main() {
     await page.type("#sshUser", "olares", { clear: true });
     await page.type("#sshPort", "", { clear: true });
     await page.type("#sshPass", sshPassword(), { clear: true });
+    await page.press("Enter");
+    await page.sleep(400);
+    const sshAfterEnter = await page.evaluate(() => ({
+      href: location.href,
+      view: [...document.querySelectorAll(".card")].find((c) => !c.classList.contains("hidden"))?.id || "",
+    }));
+    if (!sshAfterEnter.href.includes("127.0.0.1:8788") || sshAfterEnter.view !== "view-ssh") {
+      throw new Error(`ssh Enter closed panel: ${JSON.stringify(sshAfterEnter)}`);
+    }
     await page.click('[data-next="ssh-probe"]');
     await page.waitFor(
       () =>

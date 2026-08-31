@@ -577,7 +577,10 @@ function openPanel(href) {
   if (process.platform === "darwin") {
     for (const name of ["Google Chrome", "Microsoft Edge", "Brave Browser", "Chromium"]) {
       if (!macAppExists(name)) continue;
-      const opened = spawnSync("open", ["-na", name, "--args", `--app=${href}`], { encoding: "utf8" });
+      // Regular window, not --app=. App-mode puts the close button on a
+      // compact title bar; password autofill / Security Agent focus return
+      // can synthesize a click at (0,0) and close the panel while typing.
+      const opened = spawnSync("open", ["-na", name, "--args", "--new-window", href], { encoding: "utf8" });
       if (opened.status === 0) return;
     }
     osascript(`tell application "Safari"
