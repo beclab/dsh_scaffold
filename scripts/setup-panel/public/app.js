@@ -135,6 +135,8 @@ function fillFromConfig(cfg, project) {
   $("hubRepo").value = cfg.dockerHub?.repository || "";
   $("hubUser").value = cfg.dockerHub?.username || "";
   $("desktopUrl").value = cfg.olares?.desktopUrl || "";
+  $("sshUser").value = cfg.olares?.sshUser || "root";
+  $("sshPort").value = Number(cfg.olares?.sshPort) > 0 && Number(cfg.olares.sshPort) !== 22 ? String(Number(cfg.olares.sshPort)) : "";
   state.skipHub = Boolean(cfg.dockerHub?.skip) || cfg.imageMode === "save";
   state.hubReady = Boolean(cfg.dockerHub?.loggedIn) && !state.skipHub;
   state.sshReady = Boolean(cfg.olares?.sshOk);
@@ -185,22 +187,51 @@ function setLang(lang) {
   show(state.view);
 }
 
+function sshUserValue() {
+  return $("sshUser").value.trim() || state.config?.olares?.sshUser || "root";
+}
+
+function sshPortValue() {
+  const raw = $("sshPort")?.value.trim() || "";
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 && n <= 65535 ? n : 0;
+}
+
 function sshSummary(cfg) {
   const host = cfg.olares.sshHost || cfg.olares.lanIp || "";
+  const user = cfg.olares.sshUser || "root";
+  const port = Number(cfg.olares.sshPort) || 0;
   if (!host) return "—";
-  return `root@${host}`;
+  const who = `${user}@${host}`;
+  return port > 0 && port !== 22 ? `${who}:${port}` : who;
 }
 
 function sshFieldsReady() {
+  const user = $("sshUser").value.trim();
+  const host = state.config?.olares?.lanIp || state.config?.olares?.sshHost || "";
+  if (!user || !host) return false;
   if ($("sshPass").value) return true;
-  return Boolean(state.config?.olares?.sshOk);
+  const savedUser = state.config?.olares?.sshUser || "root";
+  const savedPort = Number(state.config?.olares?.sshPort) || 0;
+  const port = sshPortValue();
+  const normalizedPort = port === 22 ? 0 : port;
+  const normalizedSaved = savedPort === 22 ? 0 : savedPort;
+  return Boolean(state.config?.olares?.sshOk) && user === savedUser && normalizedPort === normalizedSaved;
 }
 
 function renderSshHost() {
   const el = $("ssh-host");
   if (!el) return;
-  const host = state.config?.olares?.sshHost || state.config?.olares?.lanIp || "";
-  el.textContent = host ? `${tr("sshHostLabel")} root@${host}` : tr("sshHostMissing");
+  const host = state.config?.olares?.lanIp || state.config?.olares?.sshHost || "";
+  const user = sshUserValue();
+  const port = sshPortValue() || Number(state.config?.olares?.sshPort) || 0;
+  if (!host) {
+    el.textContent = tr("sshHostMissing");
+    return;
+  }
+  const who = `${user}@${host}`;
+  el.textContent = `${tr("sshHostLabel")} ${port > 0 && port !== 22 ? `${who}:${port}` : who}`;
 }
 
 function syncDockerNext() {
@@ -231,6 +262,7 @@ function resetSshReady() {
   state.sshReady = false;
   $("ssh-ok").textContent = "";
   syncSshNext();
+  renderSshHost();
 }
 
 async function boot() {
@@ -275,7 +307,12 @@ for (const id of ["hubRepo", "hubUser", "hubPass"]) {
   $(id).addEventListener("input", resetHubReady);
 }
 
-$("sshPass").addEventListener("input", resetSshReady);
+for (const id of ["sshUser", "sshPort", "sshPass"]) {
+  $(id).addEventListener("input", () => {
+    resetSshReady();
+    renderSshHost();
+  });
+}
 
 document.querySelector(".panel").addEventListener("click", async (event) => {
   const next = event.target.dataset.next;
@@ -361,6 +398,10 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
       state.config = data.config;
       state.sshReady = Boolean(data.config?.olares?.sshOk);
       if (!state.sshReady) $("ssh-ok").textContent = "";
+      $("sshPort").value =
+        Number(data.config?.olares?.sshPort) > 0 && Number(data.config.olares.sshPort) !== 22
+          ? String(Number(data.config.olares.sshPort))
+          : "";
       show("ssh");
       return;
     }
@@ -378,17 +419,31 @@ document.querySelector(".panel").addEventListener("click", async (event) => {
     if (next === "ssh-probe") {
       setError("ssh-error");
       $("ssh-ok").textContent = "";
+      if (!state.config?.olares?.lanIp && !state.config?.olares?.sshHost) {
+        setError("ssh-error", tr("lan_ip_required"), "lan_ip_required");
+        return;
+      }
       if (!sshFieldsReady()) {
-        setError("ssh-error", tr("ssh_password_required"), "ssh_password_required");
+        setError(
+          "ssh-error",
+          tr($("sshUser").value.trim() ? "ssh_password_required" : "ssh_user_required"),
+          $("sshUser").value.trim() ? "ssh_password_required" : "ssh_user_required",
+        );
         return;
       }
       busy(button, true);
       const data = await api("/api/step/ssh", {
+        username: sshUserValue(),
+        port: sshPortValue(),
         password: $("sshPass").value,
       });
       $("sshPass").value = "";
       state.sshReady = true;
       state.config = data.config;
+      $("sshPort").value =
+        Number(data.config?.olares?.sshPort) > 0 && Number(data.config.olares.sshPort) !== 22
+          ? String(Number(data.config.olares.sshPort))
+          : "";
       $("ssh-ok").textContent = tr("sshProbeOk");
       syncSshNext();
       renderSshHost();

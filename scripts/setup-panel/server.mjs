@@ -21,7 +21,7 @@ import {
 } from "../lib/dsh-config.mjs";
 import { applyAppName } from "../lib/apply-app-name.mjs";
 import { inspectEnv, printReport } from "../lib/preflight.mjs";
-import { probeSsh } from "../lib/ssh-check.mjs";
+import { formatSshEndpoint, parseSshEndpoint, probeSsh } from "../lib/ssh-check.mjs";
 
 const ROOT = repoRoot();
 const PUBLIC = join(fileURLToPath(new URL(".", import.meta.url)), "public");
@@ -259,19 +259,24 @@ function writeLocalRepo(appName) {
 
 function writeMachines(cfg) {
   const user = String(cfg.olares.olaresId || "").split("@", 1)[0] || "user";
-  const sshUser = "root";
-  const sshHost = cfg.olares.sshHost || cfg.olares.lanIp || "";
-  const dest = !sshHost ? "" : sshHost.includes("@") ? sshHost : `${sshUser}@${sshHost}`;
+  const parsed = parseSshEndpoint(cfg.olares.sshHost || cfg.olares.lanIp || "", {
+    user: cfg.olares.sshUser || "root",
+  });
+  const sshUser = cfg.olares.sshUser || parsed.user || "root";
+  const host = parsed.host || cfg.olares.lanIp || "";
+  const port = Number(cfg.olares.sshPort) > 0 ? Number(cfg.olares.sshPort) : parsed.port || 0;
+  const dest = host ? `${sshUser}@${host}` : "";
   const machine = {
     id: 1,
     name: "olares",
     profile: cfg.olares.olaresId,
     olares_id: cfg.olares.olaresId,
-    lan_ip: cfg.olares.lanIp || "",
+    lan_ip: cfg.olares.lanIp || host || "",
     ssh: dest,
     dest_dir: "",
     kube_ns: `${cfg.appName}-${user}`,
   };
+  if (port > 0 && port !== 22) machine.ssh_port = port;
   if (cfg.olares.sshIdentity) {
     machine.login = { root_ssh: `key ${cfg.olares.sshIdentity}` };
   }
@@ -286,6 +291,7 @@ function rememberSshPassword(incoming) {
 
 function applySshProbe(cfg, ssh) {
   cfg.olares.sshHost = ssh.host || cfg.olares.lanIp || "";
+  cfg.olares.sshPort = Number(ssh.port) > 0 ? Number(ssh.port) : 0;
   cfg.olares.sshOk = Boolean(ssh.ok);
   cfg.olares.sshIdentity = ssh.identity || "";
   if (ssh.user) cfg.olares.sshUser = ssh.user;
@@ -397,20 +403,48 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/step/ssh") {
       const body = await readJson(req);
+      const username = String(body.username || "").trim();
       const password = String(body.password || "");
       const cfg = loadConfig();
-      const lanIp = cfg.olares.lanIp || cfg.olares.sshHost || "";
-      if (!lanIp) return fail(res, "lan_ip_required");
+      if (!username) return fail(res, "ssh_user_required");
+      // IP always comes from olares-cli; the panel never accepts a hand-typed host.
+      const detected = await detectNode();
+      const host = detected.lanIp || cfg.olares.lanIp || cfg.olares.sshHost || "";
+      if (!host) return fail(res, "lan_ip_required");
+      const prevHost = cfg.olares.sshHost || cfg.olares.lanIp || "";
+      const prevUser = cfg.olares.sshUser || "";
+      const prevPort = Number(cfg.olares.sshPort) || 0;
+      if (detected.lanIp) {
+        cfg.olares.lanIp = detected.lanIp;
+        cfg.olares.sshHost = detected.lanIp;
+      }
+      if (detected.arch) cfg.platform = writeImagePlatform(detected.arch) || cfg.platform;
+      let port = Number(body.port);
+      // Client always sends a number; 0 / 22 / invalid means OpenSSH default.
+      if (!Number.isFinite(port) || port <= 0 || port === 22) port = 0;
+      if (username !== prevUser || host !== prevHost || port !== prevPort) {
+        cfg.olares.sshOk = false;
+        cfg.olares.sshIdentity = "";
+      }
       if (!password && !cfg.olares.sshOk) {
         return fail(res, "ssh_password_required");
       }
       rememberSshPassword(password);
-      const ssh = probeSsh(lanIp, { user: "root", password: secrets.sshPassword });
-      cfg.olares.sshUser = "root";
+      const ssh = probeSsh(host, {
+        user: username,
+        port,
+        password: secrets.sshPassword,
+      });
+      cfg.olares.sshUser = username;
       applySshProbe(cfg, ssh);
+      // Keep sshHost locked to the detected LAN IP even if a wired fallback answered.
+      if (ssh.ok) cfg.olares.sshHost = host;
       saveConfig(cfg);
       if (!ssh.ok) {
-        return fail(res, ssh.errorKey || "ssh_required", { lanIp });
+        return fail(res, ssh.errorKey || "ssh_required", {
+          lanIp: host,
+          endpoint: formatSshEndpoint({ user: username, host, port }),
+        });
       }
       return send(res, 200, { ok: true, config: publicConfig(cfg) });
     }
@@ -453,6 +487,7 @@ const server = createServer(async (req, res) => {
       if (detected.lanIp && detected.lanIp !== cfg.olares.lanIp) {
         cfg.olares.sshOk = false;
         cfg.olares.sshIdentity = "";
+        cfg.olares.sshPort = 0;
       }
       cfg.olares.desktopUrl = desktopUrl.includes("://") ? desktopUrl : `https://${desktopUrl}`;
       cfg.olares.olaresId = olaresId;
@@ -472,20 +507,26 @@ const server = createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/finish") {
       const cfg = loadConfig();
-      if (cfg.imageMode === "save" && !cfg.olares.lanIp) {
+      if (cfg.imageMode === "save") {
         const detected = await detectNode();
-        cfg.olares.lanIp = detected.lanIp;
+        if (detected.lanIp) {
+          cfg.olares.lanIp = detected.lanIp;
+          cfg.olares.sshHost = detected.lanIp;
+        }
         if (detected.arch) cfg.platform = writeImagePlatform(detected.arch);
       }
       if (cfg.imageMode === "save" && !cfg.olares.lanIp) {
         return fail(res, "lan_ip_required");
       }
       if (cfg.imageMode === "save") {
-        const ssh = probeSsh(cfg.olares.sshHost || cfg.olares.lanIp, {
-          user: "root",
+        const host = cfg.olares.lanIp || cfg.olares.sshHost;
+        const ssh = probeSsh(host, {
+          user: cfg.olares.sshUser || "root",
+          port: cfg.olares.sshPort,
           password: secrets.sshPassword,
         });
         applySshProbe(cfg, ssh);
+        if (ssh.ok) cfg.olares.sshHost = host;
         if (!ssh.ok) {
           saveConfig(cfg);
           return fail(res, ssh.errorKey || "ssh_required");

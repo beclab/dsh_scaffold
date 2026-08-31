@@ -9,7 +9,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadConfig, repoRoot } from "./dsh-config.mjs";
-import { probeSsh } from "./ssh-check.mjs";
+import { formatSshEndpoint, probeSsh } from "./ssh-check.mjs";
 
 export const NODE_MIN_MAJOR = 22;
 
@@ -17,7 +17,9 @@ export function inspectEnv() {
   const checks = [inspectNode(), inspectCli(), inspectDocker(), inspectImageSkill()];
   const cfg = loadConfig();
   if (cfg.imageMode !== "push" && cfg.olares?.lanIp) {
-    checks.push(inspectSsh(cfg.olares.sshHost || cfg.olares.lanIp, "root"));
+    checks.push(
+      inspectSsh(cfg.olares.sshHost || cfg.olares.lanIp, cfg.olares.sshUser || "root", cfg.olares.sshPort),
+    );
   }
   const required = checks.filter((c) => c.id !== "ssh");
   return { ok: required.every((c) => c.ok), checks };
@@ -97,9 +99,13 @@ export function inspectImageSkill() {
   return { id: "olares-image", ok: false, version: "", errorKey: "image_skill_missing" };
 }
 
-export function inspectSsh(host, user) {
-  const probe = probeSsh(host, { user });
-  const who = `${probe.user || user || "root"}@${probe.host || host || ""}`;
+export function inspectSsh(host, user, port) {
+  const probe = probeSsh(host, { user, port });
+  const who = formatSshEndpoint({
+    user: probe.user || user || "root",
+    host: probe.host || host || "",
+    port: probe.port || port || 0,
+  });
   if (probe.ok) {
     return { id: "ssh", ok: true, version: who, errorKey: "" };
   }
@@ -152,7 +158,7 @@ function hint(errorKey, zh) {
         docker_broken: "docker 无法运行，请重装 Docker Desktop",
         image_skill_missing: "缺少 olares-image。请运行 __agent__/skills/olares-cli-setup/scripts/ensure-olares-cli.sh --with-skills",
         ssh_required: "本机无法 SSH 到节点。回到配置面板填写 SSH 用户名和密码，或改用 Hub 推送",
-        ssh_login_failed: "SSH 用户名或密码不对。节点用户一般是 root，不是 Olares ID",
+        ssh_login_failed: "SSH 用户名或密码不对",
         ssh_unreachable: "连不上节点 SSH。确认机器在线后再试",
         ssh_keygen_failed: "无法在本机生成 SSH 公钥",
         ssh_key_install_failed: "SSH 密码可用，但没能把本机公钥写到节点",
@@ -167,7 +173,7 @@ function hint(errorKey, zh) {
         docker_broken: "docker did not run; reinstall Docker Desktop",
         image_skill_missing: "olares-image is missing. Run __agent__/skills/olares-cli-setup/scripts/ensure-olares-cli.sh --with-skills",
         ssh_required: "Cannot SSH to the node. Reopen the panel and enter SSH username and password, or push via Hub",
-        ssh_login_failed: "SSH username or password was rejected. The node user is usually root, not the Olares ID",
+        ssh_login_failed: "SSH username or password was rejected",
         ssh_unreachable: "Could not reach SSH on the node. Confirm it is online and retry",
         ssh_keygen_failed: "Could not generate a local SSH key",
         ssh_key_install_failed: "SSH password worked, but the laptop public key could not be installed on the node",

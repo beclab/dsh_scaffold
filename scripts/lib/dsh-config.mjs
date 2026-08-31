@@ -68,6 +68,7 @@ export function emptyConfig() {
       olaresId: "",
       lanIp: "",
       sshHost: "",
+      sshPort: 0,
       sshUser: "root",
       sshOk: false,
       sshIdentity: "",
@@ -117,6 +118,7 @@ export function publicConfig(cfg = loadConfig()) {
       olaresId: cfg.olares?.olaresId || "",
       lanIp: cfg.olares?.lanIp || "",
       sshHost: cfg.olares?.sshHost || "",
+      sshPort: Number(cfg.olares?.sshPort) > 0 ? Number(cfg.olares.sshPort) : 0,
       sshUser: cfg.olares?.sshUser || "root",
       sshOk: Boolean(cfg.olares?.sshOk),
       sshIdentity: cfg.olares?.sshIdentity || "",
@@ -191,8 +193,9 @@ export function bashExports(cfg = loadConfig()) {
     OLARES_ID: cfg.olares?.olaresId || "",
     OLARES_DESKTOP_URL: cfg.olares?.desktopUrl || "",
     OLARES_LAN_IP: cfg.olares?.lanIp || "",
-    OLARES_SSH: cfg.olares?.sshHost || cfg.olares?.lanIp || "",
+    OLARES_SSH: formatSshHost(cfg.olares?.sshHost || cfg.olares?.lanIp || "", cfg.olares?.sshPort),
     OLARES_SSH_USER: cfg.olares?.sshUser || "root",
+    OLARES_SSH_PORT: Number(cfg.olares?.sshPort) > 0 ? String(Number(cfg.olares.sshPort)) : "",
     DOCKERHUB_REPOSITORY: cfg.dockerHub?.repository || "",
     DOCKERHUB_USERNAME: cfg.dockerHub?.username || "",
     IMAGE_MODE: cfg.imageMode || "save",
@@ -200,6 +203,14 @@ export function bashExports(cfg = loadConfig()) {
   return Object.entries(pairs)
     .map(([k, v]) => `${k}=${shellQuote(v)}`)
     .join("\n");
+}
+
+function formatSshHost(host, port) {
+  const h = String(host || "").trim();
+  const n = Number(port) || 0;
+  if (!h) return "";
+  if (h.includes("://") || /:\d+$/.test(h) || h.includes("]:")) return h;
+  return n > 0 && n !== 22 ? `${h}:${n}` : h;
 }
 
 function shellQuote(value) {

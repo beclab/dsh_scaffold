@@ -30,7 +30,7 @@ olares-cli chart lint "deploy/${OLARES_APP_ID:-dshscaffold}"
 
 Olares **pulls** images; it never builds from source. For this template the image is built on the **laptop**, then made pullable on the node. Skip-Hub: `docker build` tags `docker.io/local/<app>:<ver>` (a local name, not a Hub repo), `docker save`, scp, `ctr -n k8s.io images import`. After import the kubelet finds it on the node and does not hit the internet. Laptop proof is **save + import + upload**, not `docker push` to `beclab/`, and not GitHub Actions.
 
-1. Require a complete `.dsh/config.json` (and the `machines.json` the panel wrote). Save mode must have passed SSH BatchMode to `sshUser@sshHost`.
+1. Require a complete `.dsh/config.json` (and the `machines.json` the panel wrote). Save mode must have passed SSH BatchMode to `sshUser@sshHost`. The host IP comes from `olares-cli cluster node list` (not typed in); optional `sshPort` when SSH is not on 22.
 2. `image.platform` is written by the panel from `cluster node list`. Do not infer from the laptop.
 3. Local upload version is **max(git Chart.yaml + 1 patch, upload-source version + 1)**. Helm cannot resolve `-test`. Never commit that local number.
 

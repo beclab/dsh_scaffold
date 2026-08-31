@@ -75,8 +75,10 @@
 
         <section id="view-ssh" class="card hidden">
           <h2 data-i18n="sshTitle">节点 SSH</h2>
-          <p class="lede" data-i18n="sshLede">用上一页读到的局域网地址测试 SSH。密码只用于当场登录并写入本机公钥，不会进配置文件。</p>
+          <p class="lede" data-i18n="sshLede">节点地址由 olares-cli 自动探测，无需手填。填写用户名；SSH 不是 22 端口时再填端口。本机已有该用户密钥时密码可留空。密码只用于当场登录并把本机公钥写到节点，不会进配置文件。</p>
           <p id="ssh-host" class="host"></p>
+          <label><span data-i18n="sshUserLabel">用户名</span> <input id="sshUser" placeholder="root" autocomplete="username" spellcheck="false" /></label>
+          <label><span data-i18n="sshPortLabel">端口</span> <input id="sshPort" type="number" min="1" max="65535" placeholder="22" inputmode="numeric" autocomplete="off" /></label>
           <label><span data-i18n="sshPassLabel">密码</span> <input id="sshPass" type="password" autocomplete="current-password" /></label>
           <p id="ssh-error" class="error"></p>
           <p id="ssh-ok" class="ok"></p>
