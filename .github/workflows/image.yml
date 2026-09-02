@@ -47,13 +47,11 @@ jobs:
       base_tag: ${{ steps.id.outputs.base_tag }}
       build_base: ${{ steps.id.outputs.build_base }}
       dockerfile: ${{ steps.id.outputs.dockerfile }}
-      dockerfile_base: ${{ steps.id.outputs.dockerfile_base }}
       base_file: ${{ steps.id.outputs.base_file }}
       base_docker_target: ${{ steps.id.outputs.base_docker_target }}
       context: ${{ steps.id.outputs.context }}
       base_arg: ${{ steps.id.outputs.base_arg }}
       app_build_args: ${{ steps.id.outputs.app_build_args }}
-      prebuild: ${{ steps.id.outputs.prebuild }}
       stable: ${{ steps.id.outputs.stable }}
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +115,6 @@ jobs:
           context = image.get("context") or "."
           base_arg = image.get("base_arg") or image.get("parent_arg") or "BASE_IMAGE"
           base_target = str(image.get("base_target") or "")
-          prebuild = str(image.get("prebuild") or "")
           base_tag = str(data.get("image_base_tag") or image.get("base_tag") or "1")
           if dockerfile_base:
               base_file = dockerfile_base
@@ -151,13 +148,11 @@ jobs:
               f"base_tag={base_tag}",
               f"build_base={build_base}",
               f"dockerfile={dockerfile}",
-              f"dockerfile_base={dockerfile_base}",
               f"base_file={base_file}",
               f"base_docker_target={base_docker_target}",
               f"context={context}",
               f"base_arg={base_arg}",
               f"app_build_args={app_build_args}",
-              f"prebuild={prebuild}",
               f"stable={stable}",
           ]
           out.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -166,7 +161,7 @@ jobs:
 
   base:
     name: base (${{ matrix.arch }})
-    if: github.event_name != 'pull_request' && needs.resolve.outputs.build_base == '1' && needs.resolve.outputs.base_file != ''
+    if: needs.resolve.outputs.build_base == '1' && needs.resolve.outputs.base_file != ''
     needs: [resolve]
     strategy:
       fail-fast: false
@@ -211,7 +206,7 @@ jobs:
 
   base_merge:
     name: base manifest
-    if: github.event_name != 'pull_request' && needs.resolve.outputs.build_base == '1' && needs.resolve.outputs.base_file != ''
+    if: needs.resolve.outputs.build_base == '1' && needs.resolve.outputs.base_file != ''
     needs: [resolve, base]
     runs-on: ubuntu-latest
     steps:
@@ -241,7 +236,6 @@ jobs:
     name: app (${{ matrix.arch }})
     if: >-
       !cancelled()
-      && github.event_name != 'pull_request'
       && needs.resolve.result == 'success'
       && (needs.base_merge.result == 'success' || needs.base_merge.result == 'skipped')
     needs: [resolve, base_merge]
@@ -288,7 +282,6 @@ jobs:
 
   app_merge:
     name: app manifest
-    if: github.event_name != 'pull_request'
     needs: [resolve, app]
     runs-on: ubuntu-latest
     steps:

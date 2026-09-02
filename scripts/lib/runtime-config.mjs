@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { ghcrRepos, originGithub } from "./github.mjs";
+import { ghcrRepo, originGithub } from "./github.mjs";
 import { repoRoot } from "./dsh-config.mjs";
 
 function parseEnvFile(text) {
@@ -62,10 +62,7 @@ export function resolveRuntime(root = repoRoot()) {
   const appName = pick(fileEnv, "OLARES_APP_ID") || String(project.name || "dshscaffold").trim();
   const title = pick(fileEnv, "PRODUCT_NAME") || String(project.title || appName).trim();
   const info = originGithub(root);
-  const auto = info ? ghcrRepos(info.owner, appName) : { image_repo: "", image_base_repo: "" };
-  const imageRepo = pick(fileEnv, "IMAGE_REPO") || auto.image_repo;
-  const imageBaseRepo = pick(fileEnv, "IMAGE_BASE_REPO") || auto.image_base_repo;
-  const imageBaseTag = pick(fileEnv, "IMAGE_BASE_TAG") || String(project.image_base_tag || "1");
+  const imageRepo = pick(fileEnv, "IMAGE_REPO") || (info ? ghcrRepo(info.owner, appName) : "");
   const chartDir = project.chart_dir || `deploy/${appName}`;
   const version = chartVersion(root, join(chartDir, "Chart.yaml"));
   if (!imageRepo) {
@@ -78,10 +75,7 @@ export function resolveRuntime(root = repoRoot()) {
     title,
     version,
     image_repo: imageRepo,
-    image_base_repo: imageBaseRepo || `${imageRepo}-base`,
-    image_base_tag: imageBaseTag,
     chartDir,
-    npm_scope: String(project.npm_scope || ""),
   };
 }
 
@@ -94,9 +88,6 @@ export function bashExports(cfg = resolveRuntime()) {
     `APP_NAME=${shellQuote(cfg.appName)}`,
     `APP_TITLE=${shellQuote(cfg.title)}`,
     `IMAGE_REPO=${shellQuote(cfg.image_repo)}`,
-    `IMAGE_BASE_REPO=${shellQuote(cfg.image_base_repo)}`,
-    `IMAGE_BASE_TAG=${shellQuote(cfg.image_base_tag)}`,
-    `NPM_SCOPE=${shellQuote(cfg.npm_scope)}`,
     `CHART_DIR=${shellQuote(join(repoRoot(), cfg.chartDir))}`,
   ].join("\n");
 }

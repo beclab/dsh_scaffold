@@ -1,4 +1,4 @@
-image: ghcr.io/beclab/dshscaffold:0.1.0
+image: ghcr.io/beclab/dshscaffold:0.1.2
 imagePullPolicy: IfNotPresent
 productName: DSH Scaffold
 

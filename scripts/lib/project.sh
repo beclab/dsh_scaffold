@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Load product name + image from .env (IMAGE_REPO auto from GitHub origin).
-# Exports: APP_NAME APP_TITLE IMAGE_REPO IMAGE_BASE_REPO IMAGE_BASE_TAG NPM_SCOPE CHART_DIR PROJECT_ROOT
+# Exports: APP_NAME APP_TITLE IMAGE_REPO CHART_DIR PROJECT_ROOT
 
 _this="${BASH_SOURCE[0]-}"
 if [[ -z "${_this}" && -n "${ZSH_VERSION-}" ]]; then

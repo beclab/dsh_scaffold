@@ -9,14 +9,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, rmSync } from "nod
 import { join } from "node:path";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import {
-  CONFIG_PATH,
-  loadConfig,
-  loadProject,
-  repoRoot,
-  saveConfig,
-  validateAppName,
-} from "./dsh-config.mjs";
+import { repoRoot, validateAppName } from "./dsh-config.mjs";
 
 function lit(name) {
   return String(name).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -63,16 +56,6 @@ export function rewriteAppStrings(text, oldName, newName) {
     `ARG BASE_IMAGE=ghcr.io/beclab/${newName}-base$1`,
   );
   return s;
-}
-
-function retargetRepo(repo, oldName, newName) {
-  const raw = String(repo || "");
-  if (raw.endsWith(`/${oldName}`)) return `${raw.slice(0, -oldName.length)}${newName}`;
-  if (raw.endsWith(`/${oldName}-base`)) return `${raw.slice(0, -(oldName.length + 5))}${newName}-base`;
-  if (!raw || raw.includes("docker.io/beclab/") || raw.includes("docker.io/local/") || raw.startsWith("beclab/")) {
-    return `ghcr.io/beclab/${newName}`;
-  }
-  return `ghcr.io/beclab/${newName}`;
 }
 
 function readProductName(root) {
@@ -129,27 +112,19 @@ export function applyAppName(newName) {
     throw new Error(errorKey === "name_reserved" ? `reserved app name: ${newName}` : `invalid app name: ${newName}`);
   }
   const root = repoRoot();
-  const project = loadProject();
-  const oldName = project.name;
-  const title = displayTitle(newName);
   const projectPath = join(root, "project.json");
   const projectData = JSON.parse(readFileSync(projectPath, "utf8"));
+  const oldName = String(projectData.name || "");
+  const title = displayTitle(newName);
   const oldTitle = String(projectData.title || "").trim() || readProductName(root) || "DSH Scaffold";
   const renamed = Boolean(oldName && oldName !== newName);
 
   if (renamed) {
     projectData.name = newName;
-    projectData.image_repo = retargetRepo(projectData.image_repo, oldName, newName);
     projectData.chart_dir = `deploy/${newName}`;
     if (projectData.hot_reload && typeof projectData.hot_reload === "object") {
       if (projectData.hot_reload.deploy === oldName) projectData.hot_reload.deploy = newName;
       if (projectData.hot_reload.container === oldName) projectData.hot_reload.container = newName;
-    }
-    const oldBase = String(projectData.image_base_repo || "");
-    if (!oldBase || oldBase.includes("docker.io/") || oldBase.endsWith(`/${oldName}-base`)) {
-      projectData.image_base_repo = oldBase.endsWith(`/${oldName}-base`)
-        ? `${oldBase.slice(0, -(oldName.length + 5))}${newName}-base`
-        : `ghcr.io/beclab/${newName}-base`;
     }
   }
   projectData.title = title;
@@ -213,24 +188,6 @@ export function applyAppName(newName) {
       writeFileSync(path, rewriteAppStrings(readFileSync(path, "utf8"), oldName, newName));
     }
 
-    if (existsSync(CONFIG_PATH)) {
-      const cfg = loadConfig();
-      if (!cfg.appName || cfg.appName === oldName) {
-        cfg.appName = newName;
-        saveConfig(cfg);
-      }
-    }
-
-    const machinesPath = join(root, "machines.json");
-    if (existsSync(machinesPath)) {
-      const data = JSON.parse(readFileSync(machinesPath, "utf8"));
-      for (const machine of data.machines || []) {
-        if (typeof machine.kube_ns === "string" && machine.kube_ns.startsWith(`${oldName}-`)) {
-          machine.kube_ns = `${newName}${machine.kube_ns.slice(oldName.length)}`;
-        }
-      }
-      writeFileSync(machinesPath, `${JSON.stringify(data, null, 2)}\n`);
-    }
   }
 
   const chartDir = join(root, existsSync(join(root, "deploy", newName)) ? `deploy/${newName}` : `deploy/${oldName || newName}`);

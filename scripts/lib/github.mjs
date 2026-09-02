@@ -42,13 +42,10 @@ export function isUpstreamOrigin(info) {
   );
 }
 
-export function ghcrRepos(owner, appName) {
+export function ghcrRepo(owner, appName) {
   const o = String(owner || "").toLowerCase();
   const n = String(appName || "").toLowerCase();
-  return {
-    image_repo: `ghcr.io/${o}/${n}`,
-    image_base_repo: `ghcr.io/${o}/${n}-base`,
-  };
+  return `ghcr.io/${o}/${n}`;
 }
 
 export function inspectGithub() {
@@ -83,12 +80,6 @@ export function inspectGh() {
     return { id: "gh", ok: false, version: "", errorKey: "gh_auth" };
   }
   return { id: "gh", ok: true, version: "ok", errorKey: "" };
-}
-
-export function ghToken() {
-  const probe = spawnSync("gh", ["auth", "token"], { encoding: "utf8", timeout: 10_000 });
-  if (probe.status !== 0) return "";
-  return String(probe.stdout || "").trim();
 }
 
 const invoked =
