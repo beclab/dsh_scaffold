@@ -1,0 +1,320 @@
+# Publish ghcr.io/<github-owner>/<app> from this fork.
+# No Docker Hub secrets. GITHUB_TOKEN pushes the package.
+#
+# This file must be committed and pushed to your fork — GitHub only runs
+# workflows that exist in the remote repository. A push to main/master
+# publishes the chart version, as do tags v* and a manual dispatch.
+#
+# Chart values.yaml tag must equal Chart.yaml version. The repository is
+# stamped at package time from .env IMAGE_REPO (or ghcr.io/<owner>/<app>).
+
+name: image
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Rebuild the base image even if its tag already exists
+        type: boolean
+        default: false
+  push:
+    branches: [main, master]
+    tags: ['v*']
+    paths:
+      - 'packages/**'
+      - 'Dockerfile'
+      - 'Dockerfile.base'
+      - 'project.json'
+      - 'deploy/**'
+      - '.github/workflows/image.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  resolve:
+    name: resolve
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.id.outputs.version }}
+      app_image: ${{ steps.id.outputs.app_image }}
+      base_image: ${{ steps.id.outputs.base_image }}
+      base_tag: ${{ steps.id.outputs.base_tag }}
+      build_base: ${{ steps.id.outputs.build_base }}
+      dockerfile: ${{ steps.id.outputs.dockerfile }}
+      dockerfile_base: ${{ steps.id.outputs.dockerfile_base }}
+      base_file: ${{ steps.id.outputs.base_file }}
+      base_docker_target: ${{ steps.id.outputs.base_docker_target }}
+      context: ${{ steps.id.outputs.context }}
+      base_arg: ${{ steps.id.outputs.base_arg }}
+      app_build_args: ${{ steps.id.outputs.app_build_args }}
+      prebuild: ${{ steps.id.outputs.prebuild }}
+      stable: ${{ steps.id.outputs.stable }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: read project.json and assert versions
+        id: id
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          from pathlib import Path
+
+          root = Path(".").resolve()
+          data = json.loads((root / "project.json").read_text(encoding="utf-8"))
+          name = data.get("name") or ""
+          owner = os.environ.get("GITHUB_REPOSITORY_OWNER", "").lower()
+          if not name or not owner:
+              sys.exit("need project.json name and GITHUB_REPOSITORY_OWNER")
+          image_repo = f"ghcr.io/{owner}/{name.lower()}"
+          base_repo = f"ghcr.io/{owner}/{name.lower()}-base"
+          image = data.get("image") if isinstance(data.get("image"), dict) else {}
+          chart_rel = data.get("chart_dir") or f"deploy/{name}"
+          chart = root / chart_rel
+          version = ""
+          for line in (chart / "Chart.yaml").read_text(encoding="utf-8").splitlines():
+              if line.startswith("version:"):
+                  version = line.split(":", 1)[1].strip().strip('"')
+                  break
+          values_image = ""
+          for key in ("appImage:", "image:"):
+              for line in (chart / "values.yaml").read_text(encoding="utf-8").splitlines():
+                  if line.startswith(key):
+                      values_image = line.split(":", 1)[1].strip()
+                      break
+              if values_image:
+                  break
+          manifest = ""
+          man = chart / "OlaresManifest.yaml"
+          if man.is_file():
+              for line in man.read_text(encoding="utf-8").splitlines():
+                  if line.startswith("  version:") and "Name" not in line:
+                      manifest = line.split(":", 1)[1].strip().strip('"')
+                      break
+          _, _, img_tag = values_image.rpartition(":")
+          if img_tag and img_tag != version:
+              sys.exit(f"Chart.yaml {version} != values tag {img_tag}")
+          if manifest and manifest != version:
+              sys.exit(f"Chart.yaml {version} != OlaresManifest {manifest}")
+          ref_type = os.environ.get("GITHUB_REF_TYPE", "")
+          ref_name = os.environ.get("GITHUB_REF_NAME", "")
+          if ref_type == "tag" and ref_name != f"v{version}":
+              sys.exit(f"tag {ref_name} does not name chart version {version}")
+          dockerfile = image.get("dockerfile") or ("Dockerfile" if (root / "Dockerfile").is_file() else "deploy/app/Dockerfile")
+          dockerfile_base = image.get("dockerfile_base") or ("Dockerfile.base" if (root / "Dockerfile.base").is_file() else "")
+          dockerfile_code = str(image.get("dockerfile_code") or "")
+          context = image.get("context") or "."
+          base_arg = image.get("base_arg") or image.get("parent_arg") or "BASE_IMAGE"
+          base_target = str(image.get("base_target") or "")
+          prebuild = str(image.get("prebuild") or "")
+          base_tag = str(data.get("image_base_tag") or image.get("base_tag") or "1")
+          if dockerfile_base:
+              base_file = dockerfile_base
+              base_docker_target = ""
+          elif base_target:
+              base_file = dockerfile
+              base_docker_target = base_target
+          else:
+              base_file = ""
+              base_docker_target = ""
+          uses_code = dockerfile.endswith("Dockerfile.code") or dockerfile == dockerfile_code
+          pass_parent = bool(dockerfile_base) or uses_code
+          app_build_args = f"{base_arg}={base_repo}:{base_tag}" if pass_parent else ""
+          force_base = "${{ inputs.base || false }}" == "true"
+          build_base = "0"
+          if base_file:
+              if force_base:
+                  build_base = "1"
+              else:
+                  r = subprocess.run(
+                      ["docker", "buildx", "imagetools", "inspect", f"{base_repo}:{base_tag}"],
+                      capture_output=True,
+                  )
+                  build_base = "0" if r.returncode == 0 else "1"
+          stable = "0" if "-" in version else "1"
+          out = Path(os.environ["GITHUB_OUTPUT"])
+          lines = [
+              f"version={version}",
+              f"app_image={image_repo}",
+              f"base_image={base_repo}",
+              f"base_tag={base_tag}",
+              f"build_base={build_base}",
+              f"dockerfile={dockerfile}",
+              f"dockerfile_base={dockerfile_base}",
+              f"base_file={base_file}",
+              f"base_docker_target={base_docker_target}",
+              f"context={context}",
+              f"base_arg={base_arg}",
+              f"app_build_args={app_build_args}",
+              f"prebuild={prebuild}",
+              f"stable={stable}",
+          ]
+          out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print("\n".join(lines))
+          PY
+
+  base:
+    name: base (${{ matrix.arch }})
+    if: github.event_name != 'pull_request' && needs.resolve.outputs.build_base == '1' && needs.resolve.outputs.base_file != ''
+    needs: [resolve]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ needs.resolve.outputs.context }}
+          file: ${{ needs.resolve.outputs.base_file }}
+          target: ${{ needs.resolve.outputs.base_docker_target }}
+          platforms: linux/${{ matrix.arch }}
+          provenance: false
+          outputs: type=image,name=${{ needs.resolve.outputs.base_image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=base-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=base-${{ matrix.arch }}
+      - name: record the digest
+        run: |
+          set -euo pipefail
+          digest='${{ steps.build.outputs.digest }}'
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-base-${{ matrix.arch }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  base_merge:
+    name: base manifest
+    if: github.event_name != 'pull_request' && needs.resolve.outputs.build_base == '1' && needs.resolve.outputs.base_file != ''
+    needs: [resolve, base]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-base-*
+          merge-multiple: true
+          path: /tmp/digests
+      - name: create the manifest list
+        run: |
+          set -euo pipefail
+          image='${{ needs.resolve.outputs.base_image }}'
+          refs=()
+          for f in /tmp/digests/*; do
+            refs+=("$image@sha256:$(basename "$f")")
+          done
+          docker buildx imagetools create \
+            -t "$image:${{ needs.resolve.outputs.base_tag }}" "${refs[@]}"
+
+  app:
+    name: app (${{ matrix.arch }})
+    if: >-
+      !cancelled()
+      && github.event_name != 'pull_request'
+      && needs.resolve.result == 'success'
+      && (needs.base_merge.result == 'success' || needs.base_merge.result == 'skipped')
+    needs: [resolve, base_merge]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ needs.resolve.outputs.context }}
+          file: ${{ needs.resolve.outputs.dockerfile }}
+          platforms: linux/${{ matrix.arch }}
+          build-args: ${{ needs.resolve.outputs.app_build_args }}
+          provenance: false
+          outputs: type=image,name=${{ needs.resolve.outputs.app_image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=app-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=app-${{ matrix.arch }}
+      - name: record the digest
+        run: |
+          set -euo pipefail
+          digest='${{ steps.build.outputs.digest }}'
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-app-${{ matrix.arch }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  app_merge:
+    name: app manifest
+    if: github.event_name != 'pull_request'
+    needs: [resolve, app]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-app-*
+          merge-multiple: true
+          path: /tmp/digests
+      - name: create the manifest list
+        run: |
+          set -euo pipefail
+          image='${{ needs.resolve.outputs.app_image }}'
+          version='${{ needs.resolve.outputs.version }}'
+          tags=(-t "$image:$version" -t "$image:sha-${GITHUB_SHA::7}")
+          if [[ '${{ needs.resolve.outputs.stable }}' == 1 ]]; then
+            tags+=(-t "$image:latest")
+          fi
+          refs=()
+          for f in /tmp/digests/*; do
+            refs+=("$image@sha256:$(basename "$f")")
+          done
+          docker buildx imagetools create "${tags[@]}" "${refs[@]}"
+          docker buildx imagetools inspect "$image:$version"

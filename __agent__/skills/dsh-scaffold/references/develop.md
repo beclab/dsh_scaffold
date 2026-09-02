@@ -32,7 +32,7 @@ Root `package.json` already depends on the same pin as `_reference` (`0.1.1-rc.2
 ## Run this repo locally
 
 ```bash
-cp .env.example .env    # local LLM only; deploy config is npm run configure
+cp .env.example .env    # local LLM only
 npm install
 npm run skills:sync     # olares-* into packages/skills (gitignored)
 npm run build
@@ -47,7 +47,7 @@ Harness pin overrides: `DSH_HARNESS_REPO` / `DSH_HARNESS_REF` in `.env` (read by
 
 ## Rename
 
-Rename **before** the first upload. Prefer `npm run configure` (first screen) or:
+Rename **before** the first upload:
 
 ```bash
 node scripts/lib/apply-app-name.mjs mychat
@@ -87,7 +87,6 @@ Wire the package the same way as `bundle-web` (`package.json` name + profile ove
 | Change | Command |
 | --- | --- |
 | Overlay / plugin / service code only | Install once with `scripts/package-chart.sh --dev`, then `$GLOBAL/olares-hot-reload/scripts/sync.sh 1` |
-| Image, Dockerfile, or chart values that first-install locks | `scripts/local-test.sh 1` then `market upgrade` / `install` at `OLARES_LOCAL_VERSION` |
-| Git Chart `0.1.0` already uploaded as `0.1.1` | Next image deploy is `0.1.2` (`max(git+1, upload+1)`). Never commit that number |
+| Image, Dockerfile, or chart values that first-install locks | bump Chart/Manifest/values tag together, `scripts/deploy.sh --install` |
 
 `running` + `GET /api/health` `kernel=dsh-web` is not the same as chat working. Router is optional in the chart. Confirm Router (1.12.7) or a Model Console (1.12.6) before calling the install done.

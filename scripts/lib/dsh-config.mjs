@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 /**
- * Local deploy config (.dsh/config.json, gitignored).
- * Passwords and TOTP are never stored here.
- * Hub credentials stay in the machine Docker store after `docker login`
- * (~/.docker/config.json, often the OS keychain). Olares credentials stay
- * in the olares-cli profile / keychain. SSH password is used once to install
- * the laptop public key on the node; later deploys use BatchMode + that key.
+ * Optional leftover local notes (.dsh/config.json, gitignored).
+ * Deploy identity is project.json + git origin + olares-cli profile.
+ * Images are published by GitHub Actions to GHCR. Passwords are never stored here.
  */
 import { mkdirSync, readFileSync, writeFileSync, chmodSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,7 +34,7 @@ export const RESERVED_APP_NAMES = new Set([
 ]);
 
 export function localImageRepo(appName) {
-  return `docker.io/local/${appName}`;
+  return `ghcr.io/beclab/${appName}`;
 }
 
 export function validateAppName(name) {
@@ -56,7 +53,7 @@ export function emptyConfig() {
     version: 1,
     complete: false,
     appName: "",
-    imageMode: "save",
+    imageMode: "ghcr",
     dockerHub: {
       skip: true,
       repository: "",
@@ -106,7 +103,7 @@ export function publicConfig(cfg = loadConfig()) {
   return {
     complete: Boolean(cfg.complete),
     appName: cfg.appName || "",
-    imageMode: cfg.imageMode || "save",
+    imageMode: cfg.imageMode || "ghcr",
     dockerHub: {
       skip: Boolean(cfg.dockerHub?.skip),
       repository: cfg.dockerHub?.repository || "",
@@ -142,11 +139,6 @@ export function saveConfig(cfg) {
 
 export function isComplete(cfg = loadConfig()) {
   if (validateAppName(cfg.appName || "")) return false;
-  if (!cfg.olares?.olaresId || !cfg.olares?.desktopUrl) return false;
-  if (cfg.imageMode === "save" && (!cfg.olares?.lanIp || !cfg.olares?.sshOk || !cfg.olares?.sshUser)) return false;
-  if (cfg.imageMode === "push") {
-    if (!cfg.dockerHub?.repository || !cfg.dockerHub?.username) return false;
-  }
   return Boolean(cfg.complete);
 }
 
@@ -198,7 +190,7 @@ export function bashExports(cfg = loadConfig()) {
     OLARES_SSH_PORT: Number(cfg.olares?.sshPort) > 0 ? String(Number(cfg.olares.sshPort)) : "",
     DOCKERHUB_REPOSITORY: cfg.dockerHub?.repository || "",
     DOCKERHUB_USERNAME: cfg.dockerHub?.username || "",
-    IMAGE_MODE: cfg.imageMode || "save",
+    IMAGE_MODE: cfg.imageMode || "ghcr",
   };
   return Object.entries(pairs)
     .map(([k, v]) => `${k}=${shellQuote(v)}`)

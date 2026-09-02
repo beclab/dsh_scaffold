@@ -1,4 +1,5 @@
-export const PRODUCT_NAME = "DSH Scaffold";
+export const PRODUCT_NAME =
+  (typeof process !== "undefined" && String(process.env?.PRODUCT_NAME || "").trim()) || "DSH Scaffold";
 export const PLATFORM_NAME = "Olares";
 export const THEME_COLOR = "#B4532A";
 

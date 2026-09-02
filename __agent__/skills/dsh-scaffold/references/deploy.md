@@ -1,12 +1,12 @@
 # Deploy this chart to the user's Olares
 
-Chart dir: `deploy/<app>` from `.dsh/config.json` `appName` (default `dshscaffold`). App code is in the image (or the `devsrc` overlay), not the `.tgz`.
+Chart dir: `deploy/<app>` from `project.json` `name` (default `dshscaffold`). App code is in the image, not the `.tgz`.
 
-Deploy identity is **`.dsh/config.json`** (written by `npm run configure`). Export it with `node scripts/lib/dsh-config.mjs exports`. If the file is missing or incomplete, open the panel — do not ask in chat. Never print secrets.
+Deploy identity is **git origin + `project.json` + olares-cli profile**. There is no configure panel. Never print secrets. Do not collect passwords in chat.
 
 ## Chart invariants
 
-Keep these three versions equal in git (no `-test`):
+Keep these three versions equal in git (no leftover `-test`):
 
 - `deploy/<name>/Chart.yaml` `version`
 - `OlaresManifest.yaml` `metadata.version` / `spec.versionName`
@@ -14,7 +14,7 @@ Keep these three versions equal in git (no `-test`):
 
 Required for this chat package (already set; do not drop them):
 
-- `metadata.appid` = `metadata.name` (`lint` does not require `appid`; **`market upload` does**)
+- `metadata.appid` = `metadata.name`
 - `spec.supportArch` intersects the target node (`olares-cli cluster node list`)
 - `permission.appData` / `appCache` / `appCommon` / `userData: [Home]`
 - `ENABLE_DIND` default on; `options.apiTimeout: 0`
@@ -26,34 +26,43 @@ Required for this chat package (already set; do not drop them):
 olares-cli chart lint "deploy/${OLARES_APP_ID:-dshscaffold}"
 ```
 
-## Image — local test (default for “在机器上试试”)
+## Image — GitHub Actions → GHCR
 
-Olares **pulls** images; it never builds from source. For this template the image is built on the **laptop**, then made pullable on the node. Skip-Hub: `docker build` tags `docker.io/local/<app>:<ver>` (a local name, not a Hub repo), `docker save`, scp, `ctr -n k8s.io images import`. After import the kubelet finds it on the node and does not hit the internet. Laptop proof is **save + import + upload**, not `docker push` to `beclab/`, and not GitHub Actions.
+Olares **pulls** images; it never builds from source. This template builds in **GitHub Actions** and publishes `ghcr.io/<github-owner>/<app>:<chart-version>`. The laptop does not need Docker. Never `docker push` to `beclab/`.
 
-1. Require a complete `.dsh/config.json` (and the `machines.json` the panel wrote). Save mode must have passed SSH BatchMode to `sshUser@sshHost`. The host IP comes from `olares-cli cluster node list` (not typed in); optional `sshPort` when SSH is not on 22.
-2. `image.platform` is written by the panel from `cluster node list`. Do not infer from the laptop.
-3. Local upload version is **max(git Chart.yaml + 1 patch, upload-source version + 1)**. Helm cannot resolve `-test`. Never commit that local number.
+1. `origin` must be the user's GitHub **fork** (not `beclab/dsh_scaffold`). Actions must be enabled on that fork. The user must already have run `gh auth login` and `olares-cli profile login` themselves.
+2. Bind is automatic from `.env` (`OLARES_APP_ID`, `PRODUCT_NAME`) plus GitHub origin (`IMAGE_REPO` if empty):
 
 ```bash
-scripts/local-test.sh "${OLARES_MACHINE_ID:-1}"
+node scripts/lib/runtime-config.mjs
 ```
 
-Then install from upload (next section). If `olares-image` is missing, run `ensure-olares-cli.sh --with-skills` and stop asking the user to invent a push flow.
+3. Commit if git is dirty and the user asked to deploy (deploy implies push). Push the branch. `.github/workflows/image.yml` **must be committed and pushed** — GitHub only runs workflows that exist in the remote repo, so a local-only file builds nothing. `wait-ghcr.mjs` fails fast when the file is missing on the pushed ref or when local HEAD is unpushed.
+4. A push to `main` / `master` already builds. Otherwise publish with `gh workflow run image` (needs the file on the default branch) or push git tag `v<Chart.yaml version>`. Wait, then make the package public so the cluster can pull:
 
-Skip-Hub tags `docker.io/local/<app>:<ver>`. Do not `docker push` to `beclab/`.
+```bash
+node scripts/lib/wait-ghcr.mjs
+```
+
+5. Package + upload + install:
+
+```bash
+scripts/deploy.sh --install
+```
+
+`scripts/deploy.sh` runs preflight, bind, wait (triggers the workflow if the tag is missing), `package-chart.sh`, and `olares-cli market upload`. `--install` then `install` or `upgrade` from `-s upload`.
+
+If the GHCR package stays private, Olares cannot pull. `wait-ghcr.mjs` tries to set visibility public via `gh api`. If that fails, tell the user to open GitHub → Packages → the container → Change visibility → Public.
 
 ## Package + upload + install
 
 `lint` green and the profile clears the auth-readiness gate → proceed without asking. Within an authorised deploy/debug task, install / upgrade / restart / uninstall / clean reinstall are normal loop steps.
 
-Chart only (image already pullable or imported):
+Chart only (image already on GHCR):
 
 ```bash
-scripts/package-chart.sh                  # release .tgz, then lint
-# or
-scripts/package-chart.sh --dev            # hotReload=true, next patch version
-
-APP="${OLARES_APP_ID:-$(node -e "console.log(JSON.parse(require('fs').readFileSync('.dsh/config.json','utf8')).appName)")}"
+scripts/package-chart.sh
+APP="$(node -e "console.log(JSON.parse(require('fs').readFileSync('project.json','utf8')).name)")"
 olares-cli market upload "artifacts/${APP}-<ver>.tgz"
 ```
 
@@ -70,7 +79,7 @@ olares-cli market install "$APP" -s upload --version <ver> --watch --watch-timeo
 olares-cli market upgrade "$APP" -s upload --version <ver> --watch --watch-timeout 1m -o json
 ```
 
-If the same **git** version is already installed from another source, uninstall first, then `install -s upload` at the next patch. Local upload is newer than git, so an upload-source install can `upgrade` to that next patch.
+If the same **git** version is already installed from another source, uninstall first, then `install -s upload`. Bump Chart / Manifest / values tag together when you need a new upload.
 
 `running` is not the same as serving. Confirm:
 
@@ -80,11 +89,11 @@ entrance            olares-cli settings apps list  → URL column
 Router              installed and reachable from the pod
 ```
 
-Inspect pods as soon as the namespace appears. Do not wait on the market row alone. Runtime diagnosis is `olares-doctor`; a chart-owned fix comes back here (edit → lint → re-upload).
+Inspect pods as soon as the namespace appears. Runtime diagnosis is `olares-doctor`; a chart-owned fix comes back here (edit → lint → re-upload). A new image needs another CI publish.
 
-## Hot reload (code-only)
+## Hot reload (code-only, optional)
 
-Needs an install packaged with `scripts/package-chart.sh --dev` (`dev.hotReload: true`). Then, if the skill exists:
+Needs an install packaged with `scripts/package-chart.sh --dev` (`dev.hotReload: true`) and SSH to the node. Then, if the skill exists:
 
 ```bash
 GLOBAL=$(node __agent__/install.mjs --print-global)

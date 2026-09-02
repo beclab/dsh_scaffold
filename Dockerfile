@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # App image: compile this repo on top of the environment image.
-ARG BASE_IMAGE=docker.io/local/dshscaffold-base:3
+ARG BASE_IMAGE=ghcr.io/beclab/dshscaffold-base:3
 FROM ${BASE_IMAGE}
 
 USER root

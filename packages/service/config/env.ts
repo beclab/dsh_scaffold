@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 export interface ScaffoldEnv {
   port: number;
   host: string;
@@ -14,6 +17,34 @@ export interface ScaffoldEnv {
   cliRoot: string;
   homeDir: string;
 }
+
+function applyDotEnv() {
+  for (const name of [".env.example", ".env"]) {
+    let text = "";
+    try {
+      text = readFileSync(join(process.cwd(), name), "utf8");
+    } catch {
+      continue;
+    }
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq < 1) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (process.env[key] === undefined || process.env[key] === "") process.env[key] = value;
+    }
+  }
+}
+
+applyDotEnv();
 
 function readString(name: string): string | null {
   const value = process.env[name]?.trim();

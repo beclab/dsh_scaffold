@@ -8,25 +8,24 @@ The repo already ships a working chat (dsh web, models, DinD, `olares-cli`). You
 
 This is a **template**. Fork it to your GitHub, then clone **your fork**. Do not treat `beclab/dsh_scaffold` as the repo you develop in.
 
-The chat image is **not** downloaded from Docker Hub. The agent builds it on your laptop with Docker, then copies it onto your Olares (`docker save` → import). `docker.io/local/…` in the chart is only a local tag name, not a registry to pull from. If you fill in your own Hub repo in the setup panel, the agent pushes there instead and Olares pulls from Hub.
+The chat image is built by **GitHub Actions** on your fork and published to GHCR (`ghcr.io/<you>/<app>`). Your laptop does **not** need Docker. The agent then uses `olares-cli` to upload the chart and install it on your Olares.
+
+The build is orchestrated by [`.github/workflows/image.yml`](.github/workflows/image.yml). It runs on your fork, so your work has to be **committed and pushed** — a push to `main` builds the image, and tags `v*` or a manual run of the `image` workflow do the same.
 
 ## Start here
 
-1. Fork this repository, clone your fork, and open that folder in Cursor, Claude Code, or another skill-aware agent.
-2. Say what you want, for example:
-   - “Install olares-cli and log me in”
+1. Fork this repository, clone your fork, and open that folder in Cursor, Claude Code, or another skill-aware agent. Enable Actions on the fork.
+2. In your own terminal, log in (the agent will not do this for you):
+   - `gh auth login`
+   - `olares-cli profile login`
+3. Copy `.env.example` to `.env` if you want a custom name. Leave `IMAGE_REPO` empty.
+4. Say what you want, for example:
+   - “Install olares-cli”
    - “I want my own chat on my Olares”
    - “Change the name / title / color”
    - “Run it locally first”
-3. When the agent opens the setup panel, finish it there. **Do not type passwords, Desktop URLs, or TOTP in chat.**
 
-```bash
-npm run configure
-```
-
-The panel writes gitignored `.dsh/config.json`. After that, the agent reads that file and does not ask again.
-
-You need Node.js 22+, Docker, and an Olares (≥ 1.12.6). The agent checks Node, `olares-cli`, Docker, and the image pack scripts first (`npm run preflight`). It can install the CLI and those scripts; if Docker is missing it opens the Docker Desktop install page. `npm run configure` runs that check again and will not start until they are present.
+You need Node.js 22+, `olares-cli`, GitHub, and an Olares (≥ 1.12.6). Docker is optional. The agent checks Node, `olares-cli`, the git remote, and `gh` (`npm run preflight`). **Do not type passwords, Desktop URLs, or TOTP in chat.**
 
 ## What to ask the agent
 
@@ -43,6 +42,6 @@ The agent knows where those files live and which commands to run. You do not nee
 
 ## For the agent
 
-How to carry this out — install the laptop pack, configure, overlay, save + upload, install on the user’s Olares — is in **[docs/agent.md](docs/agent.md)**. That document is for the agent, not a user checklist.
+How to carry this out — install the laptop pack, overlay, GitHub Actions image, upload, install on the user’s Olares — is in **[docs/agent.md](docs/agent.md)**. That document is for the agent, not a user checklist.
 
 Do not commit generated agent directories (`.cursor/`, `.claude/`, …).

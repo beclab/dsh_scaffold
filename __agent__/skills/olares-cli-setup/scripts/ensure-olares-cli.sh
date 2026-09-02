@@ -122,4 +122,4 @@ if [[ "${WITH_SKILLS}" -eq 1 ]]; then
 fi
 
 echo
-echo "Next: npm run configure"
+echo "Next: npm run preflight"

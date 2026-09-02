@@ -12,6 +12,6 @@ Laptop agent pack lives in [`__agent__/`](__agent__/). This repo does not assume
 node __agent__/install.mjs --agent <id>
 ```
 
-Then read [`docs/agent.md`](docs/agent.md) and [`__agent__/skills/dsh-scaffold/SKILL.md`](__agent__/skills/dsh-scaffold/SKILL.md) (and [`__agent__/skills/olares-cli-setup/SKILL.md`](__agent__/skills/olares-cli-setup/SKILL.md) when the CLI is missing). Follow [`__agent__/rules/dsh-scaffold.md`](__agent__/rules/dsh-scaffold.md) every turn. After install, continue the user’s request — do not stop at the copy step. First-user init: `npm run preflight` (Node 22+, `olares-cli`, Docker, `olares-image`) before `npm run configure`.
+Then read [`docs/agent.md`](docs/agent.md) and [`__agent__/skills/dsh-scaffold/SKILL.md`](__agent__/skills/dsh-scaffold/SKILL.md) (and [`__agent__/skills/olares-cli-setup/SKILL.md`](__agent__/skills/olares-cli-setup/SKILL.md) when the CLI is missing). Follow [`__agent__/rules/dsh-scaffold.md`](__agent__/rules/dsh-scaffold.md) every turn. After install, continue the user’s request — do not stop at the copy step. First-user init: `npm run preflight` (Node 22+, logged-in `olares-cli`, GitHub origin, logged-in `gh`). Docker is optional. Images are built in GitHub Actions. Never run `olares-cli profile login` or `gh auth login` for the user.
 
 Do not commit the generated agent directories (`.cursor/`, `.claude/`, `.agents/`, …).

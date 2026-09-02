@@ -13,7 +13,6 @@ import {
   CONFIG_PATH,
   loadConfig,
   loadProject,
-  localImageRepo,
   repoRoot,
   saveConfig,
   validateAppName,
@@ -33,8 +32,9 @@ export function rewriteAppStrings(text, oldName, newName) {
     [`workloads.${oldName}`, `workloads.${newName}`],
     [`.Values.domain.${oldName}`, `.Values.domain.${newName}`],
     [`10-${oldName}-user-bin`, `10-${newName}-user-bin`],
-    [`docker.io/beclab/${oldName}`, localImageRepo(newName)],
-    [`docker.io/local/${oldName}`, localImageRepo(newName)],
+    [`docker.io/beclab/${oldName}`, `ghcr.io/beclab/${newName}`],
+    [`docker.io/local/${oldName}`, `ghcr.io/beclab/${newName}`],
+    [`ghcr.io/beclab/${oldName}`, `ghcr.io/beclab/${newName}`],
     [`OLARES_APP_ID=${oldName}`, `OLARES_APP_ID=${newName}`],
     [`?? "${oldName}"`, `?? "${newName}"`],
     [`?? '${oldName}'`, `?? '${newName}'`],
@@ -56,22 +56,23 @@ export function rewriteAppStrings(text, oldName, newName) {
   s = s.replace(new RegExp(`^(  )${o}:\\s*$`, "m"), `$1${newName}:`);
   s = s.replace(new RegExp(`^(  )${o}:(\\s+\\S+)`, "m"), `$1${newName}:$2`);
   s = s.replace(new RegExp(`value:\\s*"${o}"`, "g"), `value: "${newName}"`);
-  s = s.replace(new RegExp(`(ARG BASE_IMAGE=docker\\.io/)[\\w.-]+/${o}-base`, "g"), `$1local/${newName}-base`);
-  s = s.replace(new RegExp(`(BASE_IMAGE=docker\\.io/)[\\w.-]+/${o}-base`, "g"), `$1local/${newName}-base`);
+  s = s.replace(new RegExp(`(ARG BASE_IMAGE=)(?:docker\\.io|ghcr\\.io)/[\\w.-]+/${o}-base`, "g"), `$1ghcr.io/beclab/${newName}-base`);
+  s = s.replace(new RegExp(`(BASE_IMAGE=)(?:docker\\.io|ghcr\\.io)/[\\w.-]+/${o}-base`, "g"), `$1ghcr.io/beclab/${newName}-base`);
   s = s.replace(
-    /ARG BASE_IMAGE=docker\.io\/\S+-base(:\S+)?/g,
-    `ARG BASE_IMAGE=docker.io/local/${newName}-base$1`,
+    /ARG BASE_IMAGE=(?:docker|ghcr)\.io\/\S+-base(:\S+)?/g,
+    `ARG BASE_IMAGE=ghcr.io/beclab/${newName}-base$1`,
   );
   return s;
 }
 
 function retargetRepo(repo, oldName, newName) {
   const raw = String(repo || "");
-  if (!raw || raw.includes("docker.io/beclab/") || raw.startsWith("beclab/")) {
-    return localImageRepo(newName);
-  }
   if (raw.endsWith(`/${oldName}`)) return `${raw.slice(0, -oldName.length)}${newName}`;
-  return localImageRepo(newName);
+  if (raw.endsWith(`/${oldName}-base`)) return `${raw.slice(0, -(oldName.length + 5))}${newName}-base`;
+  if (!raw || raw.includes("docker.io/beclab/") || raw.includes("docker.io/local/") || raw.startsWith("beclab/")) {
+    return `ghcr.io/beclab/${newName}`;
+  }
+  return `ghcr.io/beclab/${newName}`;
 }
 
 function readProductName(root) {
@@ -145,8 +146,10 @@ export function applyAppName(newName) {
       if (projectData.hot_reload.container === oldName) projectData.hot_reload.container = newName;
     }
     const oldBase = String(projectData.image_base_repo || "");
-    if (!oldBase || oldBase.includes("docker.io/beclab/") || oldBase.endsWith(`/${oldName}-base`)) {
-      projectData.image_base_repo = `docker.io/local/${newName}-base`;
+    if (!oldBase || oldBase.includes("docker.io/") || oldBase.endsWith(`/${oldName}-base`)) {
+      projectData.image_base_repo = oldBase.endsWith(`/${oldName}-base`)
+        ? `${oldBase.slice(0, -(oldName.length + 5))}${newName}-base`
+        : `ghcr.io/beclab/${newName}-base`;
     }
   }
   projectData.title = title;
@@ -232,8 +235,24 @@ export function applyAppName(newName) {
 
   const chartDir = join(root, existsSync(join(root, "deploy", newName)) ? `deploy/${newName}` : `deploy/${oldName || newName}`);
   applyBrandTitle(root, title, chartDir, oldTitle);
+  patchEnvIdentity(root, renamed ? oldName : "", newName, title);
 
   return { changed: renamed || oldTitle !== title, from: oldName, name: newName, title };
+}
+
+function patchEnvIdentity(root, oldName, newName, title) {
+  for (const rel of [".env.example", ".env"]) {
+    const path = join(root, rel);
+    if (!existsSync(path)) continue;
+    let text = readFileSync(path, "utf8");
+    if (oldName && oldName !== newName) {
+      text = text.split(`OLARES_APP_ID=${oldName}`).join(`OLARES_APP_ID=${newName}`);
+    } else {
+      text = text.replace(/^OLARES_APP_ID=.+$/m, `OLARES_APP_ID=${newName}`);
+    }
+    text = text.replace(/^PRODUCT_NAME=.+$/m, `PRODUCT_NAME=${title}`);
+    writeFileSync(path, text);
+  }
 }
 
 const invoked = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;

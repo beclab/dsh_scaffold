@@ -142,7 +142,9 @@ spec:
             - name: OLARES_SYS_VERSION
               value: {{ .Values.sysVersion | quote }}
             - name: OLARES_APP_ID
-              value: "dshscaffold"
+              value: {{ .Chart.Name | quote }}
+            - name: PRODUCT_NAME
+              value: {{ .Values.productName | default .Chart.Name | quote }}
             - name: DSH_TRUSTED_HOSTS
               value: {{ printf "%s,%s.%s.olares.local" .Values.domain.dshscaffold (splitList "." .Values.domain.dshscaffold | first) .Values.bfl.username | quote }}
             - name: HOT_RELOAD

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# First laptop check: Node.js 22+, olares-cli, Docker engine, olares-image (via preflight.mjs).
+# First laptop check: Node.js 22+, olares-cli, GitHub origin, gh auth.
+# Docker is optional — images are built in GitHub Actions.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

@@ -1,5 +1,6 @@
-image: docker.io/local/dshscaffold:0.1.0
+image: ghcr.io/beclab/dshscaffold:0.1.0
 imagePullPolicy: IfNotPresent
+productName: DSH Scaffold
 
 workloads:
   dshscaffold:

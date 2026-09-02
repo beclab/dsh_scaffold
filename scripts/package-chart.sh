@@ -30,7 +30,7 @@ DIST="$ROOT/artifacts"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-IMAGE_TAG="$(awk -F: '/^image:/{print $3; exit}' "$CHART_SRC/values.yaml")"
+IMAGE_TAG="$(awk -F: '/^image:/{print $NF; exit}' "$CHART_SRC/values.yaml")"
 MANIFEST_VERSION="$(awk '/^  version:/{print $2; exit}' "$CHART_SRC/OlaresManifest.yaml")"
 for name in IMAGE_TAG MANIFEST_VERSION; do
   if [[ "${!name}" != "$VERSION" ]]; then
@@ -86,6 +86,29 @@ patch(
 )
 PY
 fi
+
+python3 - "$TMP/$APP_NAME" "$IMAGE_REPO" "$PKG_VERSION" "$APP_TITLE" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+chart_dir, image_repo, version, title = Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4]
+
+
+def patch(name: str, pattern: str, replacement: str) -> None:
+    path = chart_dir / name
+    text = path.read_text(encoding="utf-8")
+    text, hits = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
+    if hits != 1:
+        sys.exit(f"{name}: expected 1 match for {pattern!r}, found {hits}")
+    path.write_text(text, encoding="utf-8")
+
+
+patch("values.yaml", r"^image:\s+\S+$", f"image: {image_repo}:{version}")
+if (chart_dir / "values.yaml").read_text(encoding="utf-8").find("productName:") >= 0:
+    patch("values.yaml", r"^productName:\s*.+$", f"productName: {title}")
+patch("OlaresManifest.yaml", r"^(  title:\s*).+$", rf"\g<1>{title}")
+PY
 
 PACKAGE="$DIST/$APP_NAME-$PKG_VERSION.tgz"
 COPYFILE_DISABLE=1 tar -czf "$PACKAGE" -C "$TMP" "$APP_NAME"

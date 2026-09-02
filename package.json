@@ -8,9 +8,7 @@
     "build": "tsc -p tsconfig.server.json",
     "start": "node dist/service/index.js",
     "preflight": "scripts/preflight.sh",
-    "docker:ensure": "scripts/ensure-docker.sh",
-    "configure": "node scripts/setup-panel/server.mjs --wait",
-    "local-test": "scripts/local-test.sh",
+    "deploy": "scripts/deploy.sh",
     "skills:sync": "scripts/sync-olares-skills.sh",
     "agent:install": "node __agent__/install.mjs",
     "typecheck": "tsc -p tsconfig.server.json --noEmit"

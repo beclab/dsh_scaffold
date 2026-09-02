@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Bind GHCR names from .env / GitHub origin, wait for Actions, package, upload.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+INSTALL=0
+NO_TRIGGER=0
+for arg in "$@"; do
+  case "$arg" in
+    --install) INSTALL=1 ;;
+    --no-trigger) NO_TRIGGER=1 ;;
+    -h|--help)
+      echo "usage: scripts/deploy.sh [--install] [--no-trigger]" >&2
+      exit 0
+      ;;
+    *)
+      echo "unknown option: $arg" >&2
+      exit 2
+      ;;
+  esac
+done
+
+node "$ROOT/scripts/lib/preflight.mjs"
+
+node --input-type=module -e "import { inspectGithubFork } from './scripts/lib/github.mjs'; const d = inspectGithubFork(); if (!d.ok) { console.error(d.errorKey === 'github_fork_required' ? 'origin must be YOUR GitHub fork, not beclab/dsh_scaffold' : (d.errorKey || 'github')); process.exit(1); }"
+
+echo "$(node "$ROOT/scripts/lib/runtime-config.mjs")"
+
+WAIT_ARGS=()
+if [[ "$NO_TRIGGER" -eq 1 ]]; then
+  WAIT_ARGS+=(--no-trigger)
+fi
+node "$ROOT/scripts/lib/wait-ghcr.mjs" "${WAIT_ARGS[@]+"${WAIT_ARGS[@]}"}"
+
+# shellcheck source=scripts/lib/project.sh
+source "$ROOT/scripts/lib/project.sh"
+VERSION="$(awk '/^version:/{print $2; exit}' "$CHART_DIR/Chart.yaml")"
+"$ROOT/scripts/package-chart.sh"
+PACKAGE="$ROOT/artifacts/${APP_NAME}-${VERSION}.tgz"
+
+olares-cli market upload "$PACKAGE"
+echo "Uploaded ${APP_NAME} ${VERSION} (image ${IMAGE_REPO}:${VERSION})"
+
+if [[ "$INSTALL" -eq 1 ]]; then
+  STATE="$(olares-cli market get "$APP_NAME" -s upload -o json 2>/dev/null || true)"
+  if echo "$STATE" | grep -qE '"state":"(running|stopped|unhealthy)"'; then
+    olares-cli market upgrade "$APP_NAME" -s upload --version "$VERSION" --watch --watch-timeout 1m
+  else
+    olares-cli market install "$APP_NAME" -s upload --version "$VERSION" --watch --watch-timeout 1m
+  fi
+else
+  echo "Install: olares-cli market install ${APP_NAME} -s upload --version ${VERSION} --watch --watch-timeout 1m"
+fi
