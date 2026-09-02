@@ -43,8 +43,12 @@ olares-cli market upload "$PACKAGE"
 echo "Uploaded ${APP_NAME} ${VERSION} (image ${IMAGE_REPO}:${VERSION})"
 
 if [[ "$INSTALL" -eq 1 ]]; then
-  STATE="$(olares-cli market get "$APP_NAME" -s upload -o json 2>/dev/null || true)"
-  if echo "$STATE" | grep -qE '"state":"(running|stopped|unhealthy)"'; then
+  STATE="$(
+    olares-cli market status "$APP_NAME" -o json 2>/dev/null |
+      node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).state||'')}catch{}})" ||
+      true
+  )"
+  if [[ -n "$STATE" && "$STATE" != "installFailed" ]]; then
     olares-cli market upgrade "$APP_NAME" -s upload --version "$VERSION" --watch --watch-timeout 1m
   else
     olares-cli market install "$APP_NAME" -s upload --version "$VERSION" --watch --watch-timeout 1m

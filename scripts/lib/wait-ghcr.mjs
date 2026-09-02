@@ -23,13 +23,22 @@ function ghApi(path) {
 }
 
 async function publicManifest(repo, tag) {
-  const url = `https://ghcr.io/v2/${repo.replace(/^ghcr\.io\//, "")}/manifests/${encodeURIComponent(tag)}`;
+  const name = repo.replace(/^ghcr\.io\//, "");
   try {
-    const res = await fetch(url, {
+    const auth = await fetch(
+      `https://ghcr.io/token?service=ghcr.io&scope=${encodeURIComponent(`repository:${name}:pull`)}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!auth.ok) return false;
+    const token = String((await auth.json())?.token || "");
+    if (!token) return false;
+    const res = await fetch(`https://ghcr.io/v2/${name}/manifests/${encodeURIComponent(tag)}`, {
       headers: {
         Accept:
           "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json",
+        Authorization: `Bearer ${token}`,
       },
+      signal: AbortSignal.timeout(10_000),
     });
     return res.ok;
   } catch {
@@ -100,7 +109,7 @@ export function assertWorkflowPushed(owner, repo) {
   }
 }
 
-function latestWorkflowRun(owner, repo) {
+function latestWorkflowRun(owner, repo, version) {
   const sha = headSha();
   const run = spawnSync(
     "gh",
@@ -111,12 +120,10 @@ function latestWorkflowRun(owner, repo) {
       `${owner}/${repo}`,
       "--workflow",
       "image",
-      "--commit",
-      sha,
       "--limit",
-      "1",
+      "20",
       "--json",
-      "status,conclusion,url",
+      "status,conclusion,url,headBranch,headSha",
     ],
     {
       encoding: "utf8",
@@ -126,7 +133,11 @@ function latestWorkflowRun(owner, repo) {
   );
   if (run.status !== 0) return null;
   try {
-    return JSON.parse(run.stdout || "[]")[0] || null;
+    return (
+      JSON.parse(run.stdout || "[]").find(
+        (row) => row.headSha === sha || row.headBranch === `v${version}`,
+      ) || null
+    );
   } catch {
     return null;
   }
@@ -147,7 +158,7 @@ export async function waitGhcr({ timeoutMs = 20 * 60 * 1000, trigger = true } = 
     if (await publicManifest(bound.image_repo, bound.version)) {
       return { ok: true, image, public: true };
     }
-    const run = latestWorkflowRun(bound.owner, bound.repo);
+    const run = latestWorkflowRun(bound.owner, bound.repo, bound.version);
     if (run?.status === "completed") {
       if (run.conclusion !== "success") {
         throw new Error(`image workflow failed: ${run.url || run.conclusion}`);
