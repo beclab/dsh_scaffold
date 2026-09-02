@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Wait until ghcr.io/<owner>/<app>:<chart-version> exists, then try to
- * mark the package public so the user's Olares can pull it.
+ * Wait until ghcr.io/<owner>/<app>:<chart-version> is anonymously pullable.
+ * GitHub requires the owner to make a new package public in its settings.
  */
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -20,29 +20,6 @@ function ghApi(path) {
     cwd: repoRoot(),
     timeout: 20_000,
   });
-}
-
-function versionsHaveTag(owner, name, tag) {
-  const encoded = encodeURIComponent(name);
-  const paths = [
-    `/orgs/${owner}/packages/container/${encoded}/versions?per_page=50`,
-    `/users/${owner}/packages/container/${encoded}/versions?per_page=50`,
-    `/user/packages/container/${encoded}/versions?per_page=50`,
-  ];
-  for (const path of paths) {
-    const probe = ghApi(path);
-    if (probe.status !== 0) continue;
-    try {
-      const versions = JSON.parse(probe.stdout || "[]");
-      for (const row of versions) {
-        const tags = row?.metadata?.container?.tags || [];
-        if (tags.includes(tag)) return true;
-      }
-    } catch {
-      /* next */
-    }
-  }
-  return false;
 }
 
 async function publicManifest(repo, tag) {
@@ -123,22 +100,36 @@ export function assertWorkflowPushed(owner, repo) {
   }
 }
 
-function makePublic(owner, name) {
-  const encoded = encodeURIComponent(name);
-  const body = JSON.stringify({ visibility: "public" });
-  const paths = [
-    `/orgs/${owner}/packages/container/${encoded}/visibility`,
-    `/user/packages/container/${encoded}/visibility`,
-  ];
-  for (const path of paths) {
-    const probe = spawnSync("gh", ["api", "--method", "PUT", path, "--input", "-"], {
+function latestWorkflowRun(owner, repo) {
+  const sha = headSha();
+  const run = spawnSync(
+    "gh",
+    [
+      "run",
+      "list",
+      "--repo",
+      `${owner}/${repo}`,
+      "--workflow",
+      "image",
+      "--commit",
+      sha,
+      "--limit",
+      "1",
+      "--json",
+      "status,conclusion,url",
+    ],
+    {
       encoding: "utf8",
-      input: body,
+      cwd: repoRoot(),
       timeout: 20_000,
-    });
-    if (probe.status === 0) return true;
+    },
+  );
+  if (run.status !== 0) return null;
+  try {
+    return JSON.parse(run.stdout || "[]")[0] || null;
+  } catch {
+    return null;
   }
-  return false;
 }
 
 export async function waitGhcr({ timeoutMs = 20 * 60 * 1000, trigger = true } = {}) {
@@ -153,12 +144,17 @@ export async function waitGhcr({ timeoutMs = 20 * 60 * 1000, trigger = true } = 
   const started = Date.now();
   let triggered = false;
   while (Date.now() - started < timeoutMs) {
-    const ready =
-      versionsHaveTag(bound.owner, bound.appName, bound.version) ||
-      (await publicManifest(bound.image_repo, bound.version));
-    if (ready) {
-      const published = makePublic(bound.owner, bound.appName);
-      return { ok: true, image, public: published };
+    if (await publicManifest(bound.image_repo, bound.version)) {
+      return { ok: true, image, public: true };
+    }
+    const run = latestWorkflowRun(bound.owner, bound.repo);
+    if (run?.status === "completed") {
+      if (run.conclusion !== "success") {
+        throw new Error(`image workflow failed: ${run.url || run.conclusion}`);
+      }
+      throw new Error(
+        `${image} was built but is not public — open https://github.com/users/${bound.owner}/packages/container/${bound.appName}/settings and change visibility to Public`,
+      );
     }
     if (trigger && !triggered) {
       triggered = triggerWorkflow();
