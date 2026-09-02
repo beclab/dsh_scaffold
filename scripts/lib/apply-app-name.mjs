@@ -25,9 +25,6 @@ export function rewriteAppStrings(text, oldName, newName) {
     [`workloads.${oldName}`, `workloads.${newName}`],
     [`.Values.domain.${oldName}`, `.Values.domain.${newName}`],
     [`10-${oldName}-user-bin`, `10-${newName}-user-bin`],
-    [`docker.io/beclab/${oldName}`, `ghcr.io/beclab/${newName}`],
-    [`docker.io/local/${oldName}`, `ghcr.io/beclab/${newName}`],
-    [`ghcr.io/beclab/${oldName}`, `ghcr.io/beclab/${newName}`],
     [`OLARES_APP_ID=${oldName}`, `OLARES_APP_ID=${newName}`],
     [`?? "${oldName}"`, `?? "${newName}"`],
     [`?? '${oldName}'`, `?? '${newName}'`],
@@ -49,11 +46,9 @@ export function rewriteAppStrings(text, oldName, newName) {
   s = s.replace(new RegExp(`^(  )${o}:\\s*$`, "m"), `$1${newName}:`);
   s = s.replace(new RegExp(`^(  )${o}:(\\s+\\S+)`, "m"), `$1${newName}:$2`);
   s = s.replace(new RegExp(`value:\\s*"${o}"`, "g"), `value: "${newName}"`);
-  s = s.replace(new RegExp(`(ARG BASE_IMAGE=)(?:docker\\.io|ghcr\\.io)/[\\w.-]+/${o}-base`, "g"), `$1ghcr.io/beclab/${newName}-base`);
-  s = s.replace(new RegExp(`(BASE_IMAGE=)(?:docker\\.io|ghcr\\.io)/[\\w.-]+/${o}-base`, "g"), `$1ghcr.io/beclab/${newName}-base`);
   s = s.replace(
-    /ARG BASE_IMAGE=(?:docker|ghcr)\.io\/\S+-base(:\S+)?/g,
-    `ARG BASE_IMAGE=ghcr.io/beclab/${newName}-base$1`,
+    new RegExp(`((?:docker|ghcr)\\.io/[\\w.-]+/)${o}(-base)?`, "g"),
+    `$1${newName}$2`,
   );
   return s;
 }

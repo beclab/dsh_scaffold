@@ -58,6 +58,5 @@ packages/skills/olares-*/
 packages/skills/.olares-cli-suite
 
 # Packaging scratch
-deploy/files/
 artifacts/
 *.tgz

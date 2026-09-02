@@ -6,12 +6,12 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { inspectGh, inspectGithub } from "./github.mjs";
+import { inspectGh, inspectGithubFork } from "./github.mjs";
 
 export const NODE_MIN_MAJOR = 22;
 
 export function inspectEnv() {
-  const checks = [inspectNode(), inspectCli(), inspectOlaresProfile(), inspectGithub(), inspectGh()];
+  const checks = [inspectNode(), inspectCli(), inspectOlaresProfile(), inspectGithubFork(), inspectGh()];
   return { ok: checks.every((c) => c.ok), checks };
 }
 
