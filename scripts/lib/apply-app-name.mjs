@@ -169,14 +169,11 @@ export function applyAppName(newName) {
       "packages/service/dsh-web/boot.ts",
       "packages/service/dsh-web/profile.ts",
       "packages/service/olares/router-models.ts",
-      "packages/service/olares/console-discover.ts",
-      "packages/service/olares/skills-seed.ts",
       "Dockerfile",
       "Dockerfile.base",
       "packages/plugins/bundle-web/host/llm-routes.js",
       "packages/plugins/bundle-web/host/default-workspace.js",
       "packages/plugins/bundle-web/host/brand/mark.js",
-      ".env.example",
     ]) {
       const path = join(root, rel);
       if (!existsSync(path)) continue;
@@ -193,7 +190,7 @@ export function applyAppName(newName) {
 }
 
 function patchEnvIdentity(root, oldName, newName, title) {
-  for (const rel of [".env.example", ".env"]) {
+  for (const rel of [".env"]) {
     const path = join(root, rel);
     if (!existsSync(path)) continue;
     let text = readFileSync(path, "utf8");

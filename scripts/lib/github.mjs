@@ -48,7 +48,7 @@ export function ghcrRepo(owner, appName) {
   return `ghcr.io/${o}/${n}`;
 }
 
-export function inspectGithub() {
+function inspectGithub() {
   const url = originUrl();
   if (!url) {
     return { id: "github", ok: false, version: "", errorKey: "github_origin_missing" };

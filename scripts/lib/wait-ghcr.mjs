@@ -71,7 +71,8 @@ function triggerWorkflow() {
     cwd: repoRoot(),
     timeout: 30_000,
   });
-  return run.status === 0;
+  const err = `${run.stderr || ""}${run.stdout || ""}`.trim();
+  return { ok: run.status === 0, error: err, ref };
 }
 
 function headSha() {
@@ -168,7 +169,15 @@ export async function waitGhcr({ timeoutMs = 20 * 60 * 1000, trigger = true } = 
       );
     }
     if (trigger && !triggered) {
-      triggered = triggerWorkflow();
+      const startedRun = triggerWorkflow();
+      triggered = true;
+      if (!startedRun.ok && !run) {
+        throw new Error(
+          `could not start workflow image on ${startedRun.ref || "HEAD"}: ${startedRun.error || "gh workflow run failed"}. ` +
+            `Enable Actions on the fork, put .github/workflows/image.yml on the default branch, ` +
+            `or push tag v${bound.version}. Manual dispatch also needs: gh auth refresh -s workflow`,
+        );
+      }
     }
     await sleep(15_000);
   }

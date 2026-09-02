@@ -150,7 +150,7 @@ function replaceRequired(source: string, anchor: string, replacement: string): s
   return source.replace(anchor, replacement);
 }
 
-export function trustOlaresConnectionHost(source: string): string {
+function trustOlaresConnectionHost(source: string): string {
   return replaceRequired(
     replaceRequired(source, HOST_INTERCEPTOR_ANCHOR, HOST_INTERCEPTOR_REPLACEMENT),
     HOST_PRIVILEGED_ANCHOR,

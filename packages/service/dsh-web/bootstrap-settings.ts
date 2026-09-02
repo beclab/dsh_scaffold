@@ -15,7 +15,6 @@ const ROUTE_COMPAT = { supportsReasoningEffort: true };
 const CREDENTIAL_REF = "DSH_ROUTER_SHIM_KEY";
 
 export const ROUTER_CREDENTIAL_REF = CREDENTIAL_REF;
-export const ROUTER_PROVIDER = PROVIDER;
 
 export interface ScaffoldSettingsSeed {
   catalog: RouterModelEntry[];

@@ -32,11 +32,6 @@ machines.json
 !.env.example
 .dsh/
 
-# Official DeepSeek Harness checkout (external reference, not product code).
-# Keep _reference/README.md; fetch the tree with scripts/fetch-reference.sh
-_reference/*
-!_reference/README.md
-
 # Node
 node_modules/
 **/node_modules/

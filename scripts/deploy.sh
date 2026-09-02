@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bind GHCR names from .env / GitHub origin, wait for Actions, package, upload.
+# Wait for Actions, package the chart with the fork GHCR name, upload.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -22,8 +22,6 @@ for arg in "$@"; do
 done
 
 node "$ROOT/scripts/lib/preflight.mjs"
-
-node --input-type=module -e "import { inspectGithubFork } from './scripts/lib/github.mjs'; const d = inspectGithubFork(); if (!d.ok) { console.error(d.errorKey === 'github_fork_required' ? 'origin must be YOUR GitHub fork, not beclab/dsh_scaffold' : (d.errorKey || 'github')); process.exit(1); }"
 
 echo "$(node "$ROOT/scripts/lib/runtime-config.mjs")"
 

@@ -24,7 +24,6 @@
       "node_modules/",
       "deploy/",
       "scripts/",
-      "_reference/",
       ".env",
       ".env.*",
       "packages/skills/olares-*/",

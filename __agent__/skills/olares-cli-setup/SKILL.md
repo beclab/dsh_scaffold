@@ -12,11 +12,11 @@ description: >-
 
 Bootstrap for a laptop talking to a **remote** Olares. Does not install Olares OS.
 
-Install the binary if it is missing. **The user logs in themselves** in their own terminal (`olares-cli profile login`). The agent never runs login, never collects an Olares ID / password / TOTP / refresh token, and never types credentials into stdin.
+Install the binary if it is missing. The user runs `olares-cli profile login` in their own terminal. Never run login yourself.
 
 Run this skill when `npm run preflight` reports `olares-cli` missing or broken.
 
-If `olares-shared/SKILL.md` exists under `node __agent__/install.mjs --print-global` or `~/.agents/skills/`, follow that skill for profile **status** only — still do not run login for them.
+If `olares-shared/SKILL.md` exists under `node __agent__/install.mjs --print-global` or `~/.agents/skills/`, follow that skill for profile **status** only — do not run login.
 
 ## 1. Ensure the binary
 
@@ -60,10 +60,10 @@ olares-cli profile list
 | Status | Action |
 | --- | --- |
 | `logged-in` or `expired` | Proceed. Call market/chart/cluster as usual. An expired access token refreshes on the next request |
-| `never`, `invalidated`, or no profile | Stop. Tell them to run `olares-cli profile login` **in their own terminal**. Do not start that process, do not collect `--olares-id`, password, or TOTP |
+| `never`, `invalidated`, or no profile | Stop. They run `olares-cli profile login` in their terminal |
 | `unknown` / unparseable | Run the business command; if it asks them to log in, stop and point them at `profile login` |
 
-Same rule for GitHub: the agent never runs `gh auth login`. If `gh auth status` fails, tell them to log in themselves, then only call `gh workflow run` / `gh api`.
+Same rule for GitHub: the agent never runs `gh auth login`. If `gh` is missing, tell them to install [GitHub CLI](https://cli.github.com/). If `gh auth status` fails, tell them to log in themselves, then only call `gh`. Image publish prefers a pushed `v*` tag; `gh workflow run` needs the `workflow` scope (`gh auth refresh -s workflow`) and the workflow file on the default branch.
 
 After they say they have logged in, re-run `olares-cli profile list` / `gh auth status` and continue.
 

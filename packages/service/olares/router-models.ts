@@ -56,7 +56,7 @@ function tokenCount(value: unknown): number | null {
 }
 
 /** OpenAI-compatible GET /models payload from Router (1.12.6 llmgatewayv3 or 1.12.7 router). */
-export function routerCatalogRows(payload: unknown): RouterModelEntry[] {
+function routerCatalogRows(payload: unknown): RouterModelEntry[] {
   if (!payload || typeof payload !== "object" || !Array.isArray((payload as { data?: unknown }).data)) {
     return [];
   }
@@ -112,7 +112,7 @@ function routerAuthHeaders(apiKey: string | null, olaresAppId: string): Record<s
   return { "x-caller-appid": olaresAppId };
 }
 
-export async function fetchRouterModels(
+async function fetchRouterModels(
   env: Pick<ScaffoldEnv, "routerUrl" | "routerApiKey" | "olaresAppId">,
   timeoutMs = 8_000,
 ): Promise<RouterModelEntry[]> {
@@ -135,7 +135,7 @@ function preferLegacyGateway(sysVersion: string | null): boolean {
 }
 
 /** 1.12.7 uses `router`; 1.12.6 Market still ships `llmgatewayv3`. */
-export function gatewayCandidates(env: ScaffoldEnv): string[] {
+function gatewayCandidates(env: ScaffoldEnv): string[] {
   const primary = env.routerUrl;
   const fallback = env.routerFallbackUrl;
   const ordered = preferLegacyGateway(env.sysVersion)
@@ -159,7 +159,7 @@ export interface ResolvedGateway {
   routes: Record<string, ModelRoute>;
 }
 
-export function shouldDiscoverConsoles(
+function shouldDiscoverConsoles(
   env: ScaffoldEnv,
   gateway: { catalog: RouterModelEntry[] } | null,
 ): boolean {

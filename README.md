@@ -2,46 +2,34 @@
 
 [English](README.md) · [中文](README.zh-CN.md)
 
-Turn a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) overlay into **your own chat**, then install it on **your Olares**. You talk to the agent; the agent does the work.
+Turn a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) overlay into a chat and install it on your Olares. You state the goal; the agent runs it.
 
-The repo already ships a working chat (dsh web, models, DinD, `olares-cli`). You name it, brand it if you want, and ask the agent to put it on your machine.
+This is a template: fork it, clone **your fork**, and work there.
 
-This is a **template**. Fork it to your GitHub, then clone **your fork**. Do not treat `beclab/dsh_scaffold` as the repo you develop in.
+## Flow
 
-The chat image is built by **GitHub Actions** on your fork and published to GHCR (`ghcr.io/<you>/<app>`). Your laptop does **not** need Docker. The agent then uses `olares-cli` to upload the chart and install it on your Olares.
-
-The build is orchestrated by [`.github/workflows/image.yml`](.github/workflows/image.yml). It runs on your fork, so your work has to be **committed and pushed** — a push to `main` builds the image, and tags `v*` or a manual run of the `image` workflow do the same.
-
-## Start here
-
-1. Fork this repository, clone your fork, and open that folder in Cursor, Claude Code, or another skill-aware agent. Enable Actions on the fork.
-2. In your own terminal, log in (the agent will not do this for you):
+1. Fork this repo, clone your fork, open it in a skill-aware agent. Enable Actions on the fork.
+2. In your own terminal:
    - `gh auth login`
    - `olares-cli profile login`
-3. Copy `.env.example` to `.env` if you want a custom name. Leave `IMAGE_REPO` empty.
-4. Say what you want, for example:
-   - “Install olares-cli”
-   - “I want my own chat on my Olares”
-   - “Change the name / title / color”
-   - “Run it locally first”
+3. You need Node.js 22+, [GitHub CLI](https://cli.github.com/), `olares-cli`, and Olares ≥ 1.12.6. Ask the agent to install `olares-cli` if it is missing.
+4. Say what you want, for example “Install this on my Olares”.
 
-You need Node.js 22+, `olares-cli`, GitHub, and an Olares (≥ 1.12.6). Docker is optional. The agent checks Node, `olares-cli`, the git remote, and `gh` (`npm run preflight`). **Do not type passwords, Desktop URLs, or TOTP in chat.**
+The agent commits and pushes. [`.github/workflows/image.yml`](.github/workflows/image.yml) builds `ghcr.io/<you>/<app>:<chart-version>` on GitHub (push to `main`/`master`, a `v*` tag, or `gh workflow run image`). Then `olares-cli market upload` / install. The image name comes from git `origin`.
+
+The **first** time a given image name is built, set that container (default `dshscaffold`) to **Public** under [GitHub → Packages](https://github.com/settings/packages). Later tags on the same name stay public.
 
 ## What to ask the agent
 
 | You want | Say something like |
 | --- | --- |
-| A name other than `dshscaffold` | “Call this chat `mychat`” (before the first install) |
+| A different app id | “Call this chat `mychat`” (before the first install) |
 | Title, color, how it refers to itself | “Change the brand” |
 | New behavior | “Add a plugin that …” |
 | Skills inside the chat | “Add a skill for …” |
 | Laptop preview | “Run it locally” |
-| On your Olares | “Install this on my machine” |
+| On Olares | “Install this on my machine” |
 
-The agent knows where those files live and which commands to run. You do not need the command list.
+Local run: copy `.env.example` to `.env`, set `LLM_GATEWAY_URL`, then `npm install`, `npm run skills:sync`, `npm run build`, `npm run start`.
 
-## For the agent
-
-How to carry this out — install the laptop pack, overlay, GitHub Actions image, upload, install on the user’s Olares — is in **[docs/agent.md](docs/agent.md)**. That document is for the agent, not a user checklist.
-
-Do not commit generated agent directories (`.cursor/`, `.claude/`, …).
+Agent steps: **[`__agent__/`](__agent__/)**. Do not commit generated agent directories (`.cursor/`, `.claude/`, …).

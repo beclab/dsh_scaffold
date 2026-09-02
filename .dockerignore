@@ -3,7 +3,6 @@
 .gitignore
 .cursor
 __agent__
-_reference
 dist
 **/dist
 artifacts

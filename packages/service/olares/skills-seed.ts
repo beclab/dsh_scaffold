@@ -19,7 +19,3 @@ export function seedOlaresSkills(targetDir: string): string {
   }
   return targetDir;
 }
-
-export function bundledSkillsRoot(): string {
-  return BUNDLED;
-}

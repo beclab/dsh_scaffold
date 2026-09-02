@@ -3,7 +3,6 @@ import { join } from "node:path";
 
 export interface ScaffoldEnv {
   port: number;
-  host: string;
   routerUrl: string;
   routerFallbackUrl: string | null;
   routerApiKey: string | null;
@@ -60,7 +59,6 @@ export function loadEnv(): ScaffoldEnv {
 
   return {
     port,
-    host: readString("HOSTNAME") ?? "0.0.0.0",
     routerUrl: (readString("LLM_GATEWAY_URL") ?? "http://router-svc.router-shared/v1").replace(
       /\/+$/,
       "",
@@ -71,10 +69,10 @@ export function loadEnv(): ScaffoldEnv {
     modelConsoleUrls: readString("MODEL_CONSOLE_URLS"),
     modelConsoleApps: readString("MODEL_CONSOLE_APPS"),
     olaresAppId: readString("OLARES_APP_ID") ?? "dshscaffold",
-    sysVersion: readString("OLARES_SYS_VERSION") ?? readString("OLARES_SYSTEM_VERSION"),
-    workspace: readString("DSH_WORKSPACE") ?? "/data/workspace",
-    dataDir: readString("DSH_DATA_DIR") ?? "/data/dshscaffold",
-    cliRoot: readString("DSH_CLI_ROOT") ?? "/data/cli",
-    homeDir: readString("HOME") ?? "/data/home",
+    sysVersion: readString("OLARES_SYS_VERSION"),
+    workspace: readString("DSH_WORKSPACE") ?? ".dsh/workspace",
+    dataDir: readString("DSH_DATA_DIR") ?? ".dsh/data",
+    cliRoot: readString("DSH_CLI_ROOT") ?? ".dsh/cli",
+    homeDir: readString("HOME") ?? ".dsh/home",
   };
 }

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
- * Laptop env gate: Node.js 22+, olares-cli, a GitHub origin, gh auth.
- * Docker is optional (images are built in GitHub Actions).
+ * Laptop env gate: Node.js 22+, olares-cli logged in, GitHub fork as origin, gh auth.
  */
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -78,8 +77,8 @@ export function printReport(env = inspectEnv(), stream = process.stderr) {
       ? "环境检查通过"
       : "Environment check passed"
     : zh
-      ? "环境检查未通过。需要 Node.js 22+、已登录的 olares-cli、GitHub 仓库和已登录的 gh。Docker 不是必须的。登录请在本机终端自己完成。"
-      : "Environment check failed. Need Node.js 22+, a logged-in olares-cli, a GitHub remote, and a logged-in gh. Docker is optional. Log in yourself in your own terminal.";
+      ? "环境检查未通过。需要 Node.js 22+、已登录的 olares-cli、你自己的 GitHub fork（origin）和已登录的 gh。"
+      : "Environment check failed. Need Node.js 22+, a logged-in olares-cli, your GitHub fork as origin, and a logged-in gh.";
   stream.write(`${title}\n`);
   for (const check of env.checks) {
     const mark = check.ok ? "ok" : "fail";
@@ -108,9 +107,9 @@ function hint(errorKey, zh) {
         github_origin_missing: "这个目录没有 git origin。请 fork 模板并 clone 你的 fork",
         github_not_github: "origin 必须是 github.com 上的仓库",
         github_fork_required: "请先 fork 到你自己的 GitHub，不要在 beclab/dsh_scaffold 上推送 overlay",
-        gh_missing: "请自行安装 GitHub CLI（gh）。登录请在本机终端执行 gh auth login，agent 不会代登",
-        gh_auth: "请在本机终端自行执行 gh auth login。agent 只调用 gh，不会代登",
-        olares_login_required: "请在本机终端自行执行 olares-cli profile login。agent 只调用 CLI，不会代登、不收密码",
+        gh_missing: "请安装 GitHub CLI（gh），并在本机终端执行 gh auth login",
+        gh_auth: "请在本机终端执行 gh auth login",
+        olares_login_required: "请在本机终端执行 olares-cli profile login",
       }
     : {
         node_missing: "Install Node.js 22+ and put node on PATH",
@@ -120,9 +119,9 @@ function hint(errorKey, zh) {
         github_origin_missing: "No git origin. Fork the template and clone your fork",
         github_not_github: "origin must be a github.com repository",
         github_fork_required: "Fork to your own GitHub; do not push overlay work to beclab/dsh_scaffold",
-        gh_missing: "Install GitHub CLI (gh) yourself. Log in with gh auth login in your terminal — the agent will not",
-        gh_auth: "Run gh auth login in your own terminal. The agent only calls gh after you are logged in",
-        olares_login_required: "Run olares-cli profile login in your own terminal. The agent only calls the CLI; it will not log you in or collect a password",
+        gh_missing: "Install GitHub CLI (gh) and run gh auth login in your terminal",
+        gh_auth: "Run gh auth login in your terminal",
+        olares_login_required: "Run olares-cli profile login in your terminal",
       };
   return table[errorKey] || errorKey;
 }
